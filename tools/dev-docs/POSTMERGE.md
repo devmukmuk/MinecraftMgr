@@ -16,6 +16,7 @@
    - preserve the current branch name before switching to main
    - update local main
    - delete the merged local branch
+   - delete the merged remote branch (if GitHub didn't already auto-delete it)
    - prune stale remote-tracking branches
    </pre>
 
@@ -31,6 +32,7 @@
    - switch to main
    - pull the latest main
    - delete the previous local branch
+   - delete the previous remote branch (skip if GitHub already deleted it)
    - prune stale remote references
    </pre>
 
@@ -70,6 +72,8 @@
    git pull origin main
 
    git branch -d "$CURRENT_BRANCH"
+
+   git push origin --delete "$CURRENT_BRANCH" || true
 
    git fetch --prune
    </pre>
@@ -113,6 +117,7 @@
    - preserving current branch before checkout
    - pulling main before deleting the old branch
    - safe branch deletion with git branch -d
+   - deleting the remote branch too (tolerate failure if already gone)
    - pruning stale remote references
 
    Avoid:
@@ -143,6 +148,7 @@
    - returns to main
    - updates main
    - deletes merged local branch
+   - deletes merged remote branch
    - prunes stale remotes
    </pre>
 
