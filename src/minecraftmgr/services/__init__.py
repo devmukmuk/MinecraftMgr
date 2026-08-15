@@ -1,0 +1,1 @@
+"""MinecraftMgr service layer."""

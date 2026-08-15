@@ -1,0 +1,81 @@
+#!/bin/sh
+# Enforces the MinecraftMgr branch naming format:
+#
+#   <type>/<issue>-<epic>-<short-description>
+#
+# Examples:
+#   feat/12-REG-add-server-remove-command
+#   fix/15-BAK-archive-missing-sha256
+#   docs/18-DEP-oscar-runbook-update
+#
+# Epic registry:
+#   config/git/epics.txt
+#
+# Install into a clone with:
+#   tools/git-hooks/install.sh
+#
+# (.git/hooks/ isn't tracked by git, so this has to be copied in per-clone.)
+
+# Get current branch
+branch=$(git symbolic-ref --short HEAD 2>/dev/null)
+
+# Detached HEAD (common in CI)
+if [ -z "$branch" ]; then
+    exit 0
+fi
+
+# Allow main/master/develop branches
+case "$branch" in
+    main|master|develop)
+        exit 0
+        ;;
+esac
+
+# Find repository root
+repo_root=$(git rev-parse --show-toplevel)
+
+# Epic registry
+epic_file="$repo_root/config/git/epics.txt"
+
+if [ ! -f "$epic_file" ]; then
+    echo "ERROR: Missing epic registry: $epic_file" >&2
+    exit 1
+fi
+
+# Build Epic regex from registry file
+epics=$(grep -v '^#' "$epic_file" | grep -v '^$' | paste -sd "|" -)
+
+if [ -z "$epics" ]; then
+    echo "ERROR: No epics defined in $epic_file" >&2
+    exit 1
+fi
+
+# Branch types
+types="feat|fix|docs|test|refactor|perf|build|chore"
+
+# Validate:
+# type / issue-EPIC-description
+pattern="^($types)/[0-9]+-($epics)-[a-z0-9-]+$"
+
+if ! printf '%s' "$branch" | grep -qE "$pattern"; then
+    echo "Branch name does not match MinecraftMgr convention:" >&2
+    echo "" >&2
+    echo "  <type>/<issue>-<EPIC>-<description>" >&2
+    echo "" >&2
+    echo "Examples:" >&2
+    echo "  feat/12-REG-add-server-remove-command" >&2
+    echo "  fix/15-BAK-archive-missing-sha256" >&2
+    echo "  docs/18-DEP-oscar-runbook-update" >&2
+    echo "" >&2
+    echo "Allowed types:" >&2
+    echo "  feat fix docs test refactor perf build chore" >&2
+    echo "" >&2
+    echo "Allowed epics:" >&2
+    echo "  $(grep -v '^#' "$epic_file" | grep -v '^$' | paste -sd "|" -)" >&2
+    echo "" >&2
+    echo "Current branch:" >&2
+    echo "  $branch" >&2
+    exit 1
+fi
+
+exit 0

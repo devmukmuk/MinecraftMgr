@@ -1,0 +1,42 @@
+
+# Python
+
+**pycache**/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
+
+.venv/
+venv/
+
+# Pytest
+
+.pytest_cache/
+
+# Build
+
+build/
+dist/
+*.spec
+*.egg-info/
+
+# IDE
+
+.vscode/
+.idea/
+
+# Logs
+
+*.log
+
+# Local Config
+
+.env
+minecraftmgr.yaml
+
+# OS
+
+Thumbs.db
+.DS_Store
