@@ -1,0 +1,6 @@
+CLI
+REG
+BAK
+DEP
+TST
+DOC

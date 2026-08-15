@@ -1,0 +1,60 @@
+#!/bin/sh
+# Enforces the MinecraftMgr commit subject format:
+#   <type>(<epicAbbrev>): <shortDescription>
+#
+# See config/git/epics.txt for the epic registry.
+#
+# Install into a clone with:
+#   tools/git-hooks/install.sh
+#
+# (.git/hooks/ isn't tracked by git, so this has to be copied in per-clone.)
+
+commit_msg_file="$1"
+subject=$(head -n 1 "$commit_msg_file")
+
+# GitHub-generated merge commits, release bump commits, and reverts
+# are exempt -- they are not hand-written and are handled separately.
+case "$subject" in
+    "Merge "*|"Release v"*|"Revert "*)
+        exit 0
+        ;;
+esac
+
+# Find repository root
+repo_root=$(git rev-parse --show-toplevel)
+
+# Epic registry
+epic_file="$repo_root/config/git/epics.txt"
+
+if [ ! -f "$epic_file" ]; then
+    echo "ERROR: Missing epic registry: $epic_file" >&2
+    exit 1
+fi
+
+# Build Epic regex from registry file
+epics=$(grep -v '^#' "$epic_file" | grep -v '^$' | paste -sd "|" -)
+
+if [ -z "$epics" ]; then
+    echo "ERROR: No epics defined in $epic_file" >&2
+    exit 1
+fi
+
+# Supported commit types
+pattern="^(feat|fix|docs|test|refactor|perf|build|chore)\\(($epics)\\): .+"
+
+if ! printf '%s' "$subject" | grep -qE "$pattern"; then
+    echo "Commit subject must match:" >&2
+    echo "  type(EPIC): description" >&2
+    echo "" >&2
+    echo "  type:" >&2
+    echo "    feat|fix|docs|test|refactor|perf|build|chore" >&2
+    echo "" >&2
+    echo "  epic:" >&2
+    echo "    $(grep -v '^#' "$epic_file" | grep -v '^$' | paste -sd "|" -)" >&2
+    echo "" >&2
+    echo "  got:" >&2
+    echo "    $subject" >&2
+    exit 1
+fi
+
+exit 0

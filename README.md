@@ -1,0 +1,38 @@
+
+# MinecraftMgr
+
+Minecraft server lifecycle management and oscar deployment toolkit.
+
+## Features
+
+* Server registry (add / list / remove realms)
+* World backups with sha256 verification
+* Server jar/version updates
+* Realm restart (oscar/systemd)
+* Oscar deployment scripts
+
+## Development
+
+```bash
+python -m venv .venv
+source .venv/Scripts/activate
+pip install -r requirements.txt
+```
+
+## Run
+
+```bash
+python -m minecraftmgr about
+```
+
+## Test
+
+```bash
+pytest
+```
+
+## Docs
+
+* [docs/architecture/oscar-realm-hosting.md](docs/architecture/oscar-realm-hosting.md) — proxy/DNS/systemd/firewall runbook for hosting realms on oscar
+* [docs/architecture/deployment-workflow.md](docs/architecture/deployment-workflow.md) — Windows-edit -> push -> ssh -> backup -> pull -> restart flow
+* [docs/design/servers-json-schema.md](docs/design/servers-json-schema.md) — servers.json registry schema

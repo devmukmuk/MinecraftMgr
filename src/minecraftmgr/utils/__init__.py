@@ -1,0 +1,1 @@
+"""MinecraftMgr utility helpers."""
