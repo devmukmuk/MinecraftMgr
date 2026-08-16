@@ -17,7 +17,7 @@ from rich.console import Console
 
 from minecraftmgr.config import load_settings
 from minecraftmgr.models.server_entry import ServerEntry
-from minecraftmgr.services.jar_cache_service import JarCacheMiss, ensure_jar_cached
+from minecraftmgr.services.jar_cache_service import JarCacheError, ensure_jar_cached
 from minecraftmgr.services.provision_service import (
     ReadinessTimeout,
     RealmCrashedBeforeReady,
@@ -119,7 +119,7 @@ def provision_cmd(
 
     try:
         jar_path = ensure_jar_cached(settings.data_root, minecraft_version)
-    except JarCacheMiss as exc:
+    except JarCacheError as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(code=1)
 
