@@ -2,6 +2,10 @@
 
 How changes made on the Windows dev box reach the live realms on `oscar`.
 
+> This describes the *target* state. For how oscar's real, pre-split
+> `/srv/minecraft` layout gets migrated to this, see
+> [oscar-migration-plan.md](oscar-migration-plan.md).
+
 ## Two separate trees on oscar
 
 Keep these apart — don't let one grow into the other:

@@ -47,13 +47,21 @@ This epic is documentation- and infra-config-heavy rather than
 
 ## Open work
 
-- Restart is a manual `systemctl restart` step today — no
-  `minecraftmgr server restart <id>` CLI command wraps it, so DEP still
-  depends on shelling into oscar directly for that step.
-- `tools/scripts/` (oscar-side live server scripts, e.g. wrapping the
-  systemd calls or the DDNS cron job) and `tools/python/` from the
-  original project scope aren't built yet — currently the DEP steps above
-  are manual/documented, not scripted.
-- No automated health check after a deploy (e.g. confirming
-  `mc-<realm>.service` came back up and Velocity can route to it) — Step
-  10 of the runbook is a manual client-connect test.
+- The systemd process model described above was never actually deployed
+  on oscar — real realms run under `screen`, started by hand-maintained
+  scripts. [oscar-migration-plan.md](../architecture/oscar-migration-plan.md)
+  documents the real layout and the plan to reconcile `/srv/minecraft`
+  with the git/data split, while explicitly leaving the `screen`→systemd
+  conversion as separate, later work.
+- Restart is a manual step today (`screen` stop/start or `systemctl` once
+  that conversion happens) — no `minecraftmgr server restart <id>` CLI
+  command wraps it, so DEP still depends on shelling into oscar directly
+  for that step.
+- `tools/scripts/` (oscar-side live server scripts) and `tools/python/`
+  from the original project scope aren't built yet. The migration plan
+  identifies which of oscar's existing `Scripts/` should be ported in
+  (`start_all`/`stop_all`/`scaffold_new`/`config_ufw_rules`) once the
+  `/opt/mc` split happens.
+- No automated health check after a deploy (e.g. confirming a realm came
+  back up and Velocity can route to it) — Step 10 of the runbook is a
+  manual client-connect test.

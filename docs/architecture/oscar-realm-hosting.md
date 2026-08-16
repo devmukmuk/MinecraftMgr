@@ -4,6 +4,12 @@ Runbook for hosting multiple always-on Minecraft realms on `oscar` (home Ubuntu
 box) behind a single subdomain-routed proxy, so players only ever need
 `<realm>.gamenightbymike.com` — no port, no port-forward-per-server.
 
+> **Note:** the systemd units described below (Steps 6/7/9) were never
+> actually deployed on oscar — realms currently run under `screen`, started
+> by hand-maintained scripts. See
+> [oscar-migration-plan.md](oscar-migration-plan.md) for the real current
+> state and the plan to reconcile it with this runbook.
+
 Author: Mike Mattinson
 
 ## ============= Architecture
