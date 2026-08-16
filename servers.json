@@ -1,4 +1,15 @@
 {
+  "gravestone": {
+    "name": "Gravestone",
+    "status": "active",
+    "port": 26005,
+    "minecraft_version": "26.1.2",
+    "server_type": "paper",
+    "jar_source": "",
+    "data_dir": "gravestone_26_1_2",
+    "created": "2026-08-16T02:30:00+00:00",
+    "notes": "converted from Fabric to Paper 2026-08-16, dropped fabric-api/gravestones/pneumonocore mods, now behind Velocity"
+  },
   "jitterbug": {
     "name": "Jitterbug",
     "status": "inactive",
@@ -8,6 +19,6 @@
     "jar_source": "",
     "data_dir": "jitterbug_1_21_1",
     "created": "2026-08-16T01:33:47.768092+00:00",
-    "notes": "not an active realm"
+    "notes": "not an active realm; was actually running vanilla despite this field, converted to real Paper 2026-08-16, now behind Velocity"
   }
 }
