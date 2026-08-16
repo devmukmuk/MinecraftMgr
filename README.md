@@ -36,3 +36,4 @@ pytest
 * [docs/architecture/oscar-realm-hosting.md](docs/architecture/oscar-realm-hosting.md) — proxy/DNS/systemd/firewall runbook for hosting realms on oscar
 * [docs/architecture/deployment-workflow.md](docs/architecture/deployment-workflow.md) — Windows-edit -> push -> ssh -> backup -> pull -> restart flow
 * [docs/design/servers-json-schema.md](docs/design/servers-json-schema.md) — servers.json registry schema
+* [docs/epics/README.md](docs/epics/README.md) — epic codes, commit/branch conventions, and links to each epic's design doc
