@@ -6,13 +6,15 @@ box) behind a single subdomain-routed proxy, so players only ever need
 
 > **Note:** the systemd units described below (Steps 6/7/9) were never
 > actually deployed on oscar — realms currently run under `screen`, started
-> by hand-maintained scripts. The Velocity proxy described in Step 7 also
-> was never actually deployed — every realm currently needs its own
+> by hand-maintained scripts. The Velocity proxy described in Step 7 **is
+> now live** (deployed 2026-08-16), but only two realms (`gravestone`,
+> `jitterbug`) are behind it so far — the other 7 still need their own
 > port-forward, `ufw` rule, and Cloudflare `SRV` record (the pattern this
-> doc calls out below as the "modded realm exception") rather than the
-> single shared port this doc describes. See
-> [oscar-migration-plan.md](oscar-migration-plan.md) for the real current
-> state and the plan to reconcile it with this runbook.
+> doc calls out below as the "modded realm exception"). See
+> [oscar-migration-plan.md](oscar-migration-plan.md)'s
+> [Velocity proxy deployment](oscar-migration-plan.md#velocity-proxy-deployment-live-aug-16-2026)
+> section for what deploying it for real actually took, and the per-realm
+> steps to bring the rest onto the shared proxy.
 
 Author: Mike Mattinson
 

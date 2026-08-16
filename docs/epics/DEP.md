@@ -68,12 +68,17 @@ This epic is documentation- and infra-config-heavy rather than
 - No automated health check after a deploy (e.g. confirming a realm came
   back up and reachable) — Step 10 of the runbook is a manual
   client-connect test.
-- No Velocity proxy actually runs, confirmed by getting a real realm
-  connected end to end: each realm needs its own AT&T router port-forward,
-  Cloudflare `SRV` record (not `CNAME` — see
-  [oscar-migration-plan.md](../architecture/oscar-migration-plan.md)),
-  and an explicit `ufw allow <port>/tcp` rule. None of that is automated
-  yet — it's three manual dashboard/CLI steps per realm.
+- Velocity is now actually deployed (2026-08-16), but only `gravestone`
+  and `jitterbug` sit behind it so far — both had to be converted from
+  their original engines (Fabric and vanilla respectively) to Paper
+  first, since neither Fabric nor vanilla speak Velocity's forwarding
+  protocol natively. The other 7 realms are still on the old pattern:
+  their own AT&T router port-forward, Cloudflare `SRV` record (not
+  `CNAME`), and an explicit `ufw allow <port>/tcp` rule. None of the
+  per-realm cutover to Velocity is automated yet — see
+  [oscar-migration-plan.md](../architecture/oscar-migration-plan.md)'s
+  Velocity proxy deployment section for the manual steps and the
+  gotchas hit doing the first two.
 - Oscar's outbound IPv6 is broken, which silently breaks Mojang session
   verification unless every realm's `start.sh` forces
   `-Djava.net.preferIPv4Stack=true`. Worth fixing at the network level

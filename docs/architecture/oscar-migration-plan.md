@@ -234,6 +234,249 @@ java -Djava.net.preferIPv4Stack=true -Xms$MEM_MIN -Xmx$MEM_MAX -jar "$JAR" nogui
 This needs to be in the [`start.sh` template](#templating-startsh) below,
 not just patched per-realm as issues come up.
 
+## Velocity proxy deployment (live, Aug 16 2026)
+
+The [Connectivity per realm](#connectivity-per-realm-dns-port-forward-firewall)
+section above describes the fallback ("every realm gets its own port")
+state that existed because Velocity had never actually been deployed.
+That's no longer true for `gravestone` and `jitterbug` — the real
+Velocity proxy described in
+[oscar-realm-hosting.md](oscar-realm-hosting.md) Step 7 is now running on
+oscar, and those two realms sit behind it on the single shared port
+(`25565`). The other 7 realms still need the per-realm treatment until
+they're brought onto the proxy too.
+
+**Why now:** getting to "no port, no port-forward per realm" was the
+whole point of the original design — the per-realm `SRV` pattern was
+always meant to be temporary. This is that temporary state ending, one
+realm pair at a time.
+
+### Pre-existing blockers this surfaced
+
+Standing up Velocity meant actually inspecting what the two realms were
+running, which turned up two things the registry didn't reflect:
+
+- **`jitterbug`'s jar was vanilla, not Paper**, despite `servers.json`
+  saying `server_type: paper`. Its manifest's `Main-Class` was
+  `net.minecraft.bundler.Main` (the stock Mojang server bootstrap) — the
+  `paper` label was simply wrong. Vanilla has no support for any proxy
+  forwarding scheme (legacy or modern), so this was a hard blocker for
+  putting it behind Velocity at all, not just a labeling bug.
+- **`gravestone` was genuinely Fabric**, running 3 mods (`fabric-api`,
+  a custom `gravestones` mod, and its `pneumonocore` dependency). Fabric
+  has no native Velocity forwarding support either — it needs an add-on
+  mod like FabricProxy-Lite to speak the proxy protocol at all.
+
+Rather than add a compatibility mod to gravestone, the decision was to
+drop all three mods and convert both realms to Paper, which supports
+Velocity's modern forwarding natively. This does mean gravestone lost
+whatever gameplay the `gravestones` mod added — an explicit, deliberate
+tradeoff, not a side effect.
+
+### Converting both realms to Paper
+
+Paper jars came from PaperMC's current Fill API
+(`fill.papermc.io/v3/projects/...`) — the old `api.papermc.io/v2`
+endpoint referenced in [oscar-realm-hosting.md](oscar-realm-hosting.md)
+has since been sunset and returns an error. Exact builds used: Paper
+`1.21.1` build 2 (jitterbug), Paper `26.1.2` build 53 (gravestone).
+
+Process, run from the dev box over SSH plus the `minecraft` user for
+anything touching the live process (see
+[the minecraft-user playbook](#what-had-to-run-as-minecraft) below):
+
+1. **Backed up gravestone first.** `world/level.dat` and `level.dat_old`
+   are `-rw-------`, owned by `minecraft` — not even group-readable, so
+   `mike` genuinely cannot read them, running or not. The safety `tar`
+   had to run as `minecraft`, saved to
+   `/mnt/backup/minecraft/gravestone_26_1_2_pre-paper-swap_<timestamp>.tar.gz`
+   (~2.6GB). jitterbug didn't get one — explicitly disposable, per
+   earlier sessions.
+2. **Swapped jars in place**, same filename `start.sh` already expects
+   (`server_<data_dir>.jar`), so no `start.sh` edits needed for this
+   part. Old jars kept, not deleted:
+   `server_jitterbug_1_21_1.jar.vanilla-bak`,
+   `server_gravestone_26_1_2.jar.fabric-bak`.
+3. **Moved gravestone's Fabric `mods/` and `config/` aside**
+   (`mods.disabled-fabric/`, `config.disabled-fabric/`) rather than
+   deleting — Paper ignores them either way, keeping them costs nothing
+   and preserves the option to revert.
+4. **First boot triggered Paper's standard one-time world migration**
+   (nether/end folder restructuring for jitterbug's vanilla world;
+   a "WorldFolderMigration" pass for gravestone with a 30-second
+   "interrupt now if you don't have a backup" warning). Both completed
+   cleanly, both worlds loaded intact — confirmed live by connecting and
+   checking the world was gravestone's real one, not a fresh generation.
+5. **Two unrelated data-pack warnings on gravestone's boot**
+   (`Missing data pack fabric-convention-tags-v2`,
+   `Missing data pack gravestones`) are expected and harmless — direct
+   fallout of removing the mods, not something to fix.
+
+### Java version gotchas (two, in opposite directions)
+
+- **jitterbug's Paper build crashed on first boot** — a JVM `SIGSEGV`
+  inside spark's bundled `libasyncProfiler.so`
+  (`hs_err_pid<pid>.log` pinned it to
+  `VMThread::nativeThreadId`/`Profiler::updateThreadName`). Oscar's
+  default `java` is a very new build (Temurin 25.0.2, JRE version
+  "25"), and this Paper build's bundled async-profiler wasn't tested
+  against it. Gravestone's newer Paper build didn't hit this on the same
+  Java 25, so it's specific to jitterbug's older build. **Fix**: pinned
+  jitterbug's `start.sh` to explicitly invoke
+  `/usr/lib/jvm/java-21-openjdk-amd64/bin/java` instead of the bare
+  `java` on `$PATH`. Both Java 17 and 21 were already installed on
+  oscar — no new install needed. Gravestone was left on the default
+  Java 25 since it wasn't affected.
+- **Velocity 4.0.0 itself requires Java 25**, the opposite problem —
+  running it with the Java 21 binary fails outright with
+  `UnsupportedClassVersionError` (class file version 69 vs. the JRE's
+  max of 65). So oscar currently runs a genuinely mixed Java setup:
+  Velocity on Java 25, gravestone on Java 25, jitterbug on Java 21. Not
+  tidy, but each pinning is load-bearing — don't "simplify" this later
+  without re-testing.
+
+### Velocity config
+
+Installed at `/opt/mc/_proxy` (Velocity 4.0.0, downloaded the same way
+as the Paper jars, via the Fill API — the old install instructions in
+[oscar-realm-hosting.md](oscar-realm-hosting.md) also predate the API
+migration). `velocity.toml`:
+
+```toml
+bind = "0.0.0.0:25565"
+player-info-forwarding-mode = "MODERN"
+forwarding-secret-file = "forwarding.secret"
+
+[servers]
+jitterbug = "127.0.0.1:26887"
+gravestone = "127.0.0.1:26005"
+try = ["gravestone"]
+
+[forced-hosts]
+"jitterbug.gamenightbymike.com" = ["jitterbug"]
+"gravestone.gamenightbymike.com" = ["gravestone"]
+```
+
+Both backends need matching trust configured in
+`config/paper-global.yml` (generated by Paper on first boot, so this
+config comes *after* the Paper conversion above, not before):
+
+```yaml
+proxies:
+  velocity:
+    enabled: true
+    online-mode: true
+    secret: '<contents of /opt/mc/_proxy/forwarding.secret>'
+```
+
+...and `server.properties` on both needs `online-mode=false` — Velocity
+does the real Mojang handshake and forwards verified identity; a backend
+that also tries its own Mojang auth on a proxied connection will reject
+it.
+
+**This is an atomic cutover, not a gradual one.** The moment a backend's
+`paper-global.yml` has `proxies.velocity.enabled: true` and it restarts,
+it stops accepting *any* direct connection — including from the LAN,
+including from the old port-forward — regardless of whether Velocity
+itself is even running yet. There's no window where both direct and
+proxied access work side by side. Practical implication: don't flip a
+realm's forwarding trust until Velocity is already confirmed running,
+or you'll strand that realm with zero connectivity until it is.
+
+### Network cutover
+
+Once both realms trusted the proxy, the per-realm connectivity from
+[Connectivity per realm](#connectivity-per-realm-dns-port-forward-firewall)
+got replaced with the single-port design:
+
+- **AT&T router**: one port-forward, `25565/TCP` → oscar. The old
+  `26005`/`26887` entries were removed (they'd stopped working anyway —
+  see the atomic-cutover note above).
+- **`ufw`**: `25565/tcp` allowed (both v4 and v6 rules appeared —
+  oscar's ufw config apparently duplicates rules per address family).
+  The old `26005`/`26887` rules are now dead weight (harmless, but worth
+  removing during a later cleanup pass).
+- **Cloudflare**: the `mc.gamenightbymike.com` `A` record already
+  existed from the earlier per-realm work and needed no changes. The
+  per-realm `_minecraft._tcp.<realm>` `SRV` records got deleted and
+  replaced with plain `CNAME`s: `gravestone` → `mc.gamenightbymike.com`,
+  `jitterbug` → `mc.gamenightbymike.com` (both DNS-only / grey cloud,
+  matching the `A` record).
+
+### What had to run as `minecraft`
+
+Everything that touches a live process or a `-rw-------` file still has
+to run in the user's own `minecraft` shell (`sudo -iu minecraft`) — the
+Claude Code SSH key only has `mike`, and `mike` can't `sudo`
+non-interactively (see [[oscar_ssh_access]]). The full sequence used
+tonight, reusable for the remaining realms:
+
+```bash
+# graceful stop (repeat per realm)
+screen -S <realm> -p 0 -X stuff "say Restarting...$(printf '\r')"
+sleep 2
+screen -S <realm> -p 0 -X stuff "save-all$(printf '\r')"
+sleep 2
+screen -S <realm> -p 0 -X stuff "stop$(printf '\r')"
+sleep 10
+pgrep -af server_<realm>.jar   # must print nothing before continuing
+
+# gravestone only: safety backup before any risky change
+# (level.dat etc. are -rw------- minecraft-owned, mike can never read them)
+tar czf /mnt/backup/minecraft/<realm>_<purpose>_$(date +%Y%m%d_%H%M%S).tar.gz \
+  world server.properties eula.txt ops.json whitelist.json \
+  banned-ips.json banned-players.json usercache.json mods/ config/
+
+# start the proxy (once, not per-realm)
+cd /opt/mc/_proxy
+screen -dmS velocity_proxy java -jar velocity.jar
+
+# start each realm
+cd /opt/mc/<realm> && screen -dmS <realm> ./start.sh
+```
+
+**The graceful `stop` command doesn't always take effect** — jitterbug's
+old vanilla process ignored it once, and the only reliable follow-up was
+`ps aux | grep server_<realm>.jar` to get the PID and `kill` it directly
+(`kill -9` if plain `kill` doesn't clear it after a few seconds). Always
+verify the process is actually gone (`pgrep`) before starting a
+replacement — starting a second instance while the first is still alive
+produces a `session.lock` `AccessDeniedException`/`LockException`, not a
+helpful "already running" message.
+
+**Don't run start commands from the automation SSH key.** The key only
+has `mike`, and a realm started as `mike` races against the same realm
+started correctly as `minecraft` — both bind the same port and lock file
+simultaneously, and whichever loses becomes a zombie that has to be
+killed by PID. Every start/stop goes through the user's own `minecraft`
+shell, no exceptions, even under time pressure.
+
+**Log rotation can hide the process you actually care about.** Paper
+rotates the *previous* run's full log into a numbered
+`logs/<date>-<n>.log.gz` archive at the moment a *new* process claims
+`logs/latest.log` — so if a duplicate/crashed start attempt happens
+after a real successful boot, `latest.log` shows only the tiny crash,
+and the real boot's log is one of the just-created `.gz` archives, not
+`latest.log`. Check archive timestamps against `ps aux` start times
+before concluding a boot failed.
+
+### Verification status
+
+Confirmed live: connecting to `192.168.1.113:25565` from inside the LAN
+serves Velocity's MOTD (proof the proxy itself is up and reachable) and
+the default `try` server (`gravestone`) loads the real, existing
+gravestone world under the player's real Mojang identity — proof modern
+forwarding actually works end-to-end, not just an offline-mode
+passthrough.
+
+**Not yet confirmed**: `jitterbug`'s forced-host routing (needs the
+actual hostname sent by the client, which a raw-IP LAN test can't
+exercise), and true external reachability for either realm. Both need a
+test from a device off the home LAN (phone on cellular) — home routers
+typically can't hairpin a LAN client back to the router's own public IP,
+so `<realm>.gamenightbymike.com` won't resolve usefully from inside the
+house even with DNS correct. Paused here pending that test.
+
 ## Target layout
 
 ```
