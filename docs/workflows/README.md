@@ -3,7 +3,10 @@
 Runbooks for changing an **already-active** realm on oscar. `docs/epics/PROV-design.md`
 covers *creating* a realm (`realm provision`/`realm activate`); everything here
 picks up after that, once a realm is registered, wired into Velocity, and
-players are on it.
+players are on it. See [PAPER.md](../PAPER.md) for what Paper actually is
+(not vanilla) and the three jar-lifecycle workflows — getting a jar,
+deploying one, upgrading one — which that doc covers in one place instead
+of scattering across here.
 
 Each doc follows the same shape: when to use it, the steps, how to verify it
 worked, and an **automation status** line. Where a manual step has a
