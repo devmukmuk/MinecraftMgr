@@ -50,6 +50,67 @@ detected as Paper — real incident: `jitterbug` was recorded as `paper` in
 until Velocity forwarding was attempted, because a direct-connect player
 can't tell the difference either.
 
+## Known gameplay differences: redstone and farms
+
+Reddit complaints about Paper breaking big redstone builds or automatic
+farms are a real, recurring thing, not exaggeration — and they come from
+the same performance work that makes Paper worth running in the first
+place, not from a bug:
+
+- **Alternate redstone engine.** Paper ships a community-written redstone
+  implementation (`alternate-current`) as the default instead of vanilla's
+  own algorithm — faster, but a genuinely different implementation. Builds
+  that lean on vanilla-specific quirks (quasi-connectivity tricks, exact
+  update-order dependencies) can behave differently or break outright.
+  Switchable per-world back to vanilla-exact behavior — see below.
+- **Entity AI throttling** ("entity activation range") — entities far from
+  any player get ticked less often, or not at all, to save CPU. A farm
+  that depends on distant mobs behaving normally (falling, pathing,
+  triggering something) can misbehave if the range is tuned too tight for
+  that farm's layout.
+- **Per-chunk entity/hopper caps** — Paper hard-caps entity count and
+  hopper transfer rate per chunk specifically to stop one big farm or item
+  pile from lagging the server for everyone else on it. This is often
+  exactly what people are hitting on Reddit: a deliberate ceiling vanilla
+  doesn't have.
+
+### Where the knobs live
+
+Paper builds on top of Spigot, so a realm's `config/` folder — generated on
+first boot, same as `paper-global.yml`'s Velocity trust block (see
+[PROV-design.md](epics/PROV-design.md)) — ends up with layered config
+rather than one file:
+
+| File | Covers |
+|---|---|
+| `spigot.yml` | Entity activation range, hopper transfer/check ticks, and other tuning inherited from Paper's Spigot lineage |
+| `config/paper-global.yml` | Server-wide Paper settings (already patched by `provision`/`activate` for Velocity trust) |
+| `config/paper-world-defaults.yml` | Per-world settings, including `redstone-implementation` (`alternate_current` vs `vanilla`) and entity-per-chunk limits |
+
+None of this project's tooling touches `spigot.yml` or
+`paper-world-defaults.yml` today — a freshly provisioned realm runs on
+whatever defaults that Paper build ships with. Exact key names shift
+between Paper versions more than the general shape does, so treat the
+table above as "which file to open," and read the actual generated file on
+the realm in question rather than trusting a hardcoded key path from here.
+
+### If a realm hits this
+
+1. [Stop the realm](workflows/stop-restart-server.md).
+2. Edit the relevant file — most likely `redstone-implementation` in
+   `config/paper-world-defaults.yml` for a broken contraption, or the
+   entity-activation-range/hopper settings in `spigot.yml` for a farm
+   that's underperforming or dropping mobs/items.
+3. Start it back up. Most Paper config is read at startup; a few settings
+   support `/paper reload` without a restart, but that command's own
+   output warns it doesn't cover everything — a full restart is the safe
+   default.
+
+This is a per-realm, per-world trade-off, not all-or-nothing: dialing a
+setting back toward vanilla behavior gives up some of the performance
+headroom that setting existed for, but only for that one realm/world, not
+project-wide.
+
 ## 1. Where to get a Paper server jar
 
 - **Downloads page**: <https://papermc.io/downloads/paper> — pick the
