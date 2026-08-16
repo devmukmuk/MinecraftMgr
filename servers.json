@@ -1,4 +1,15 @@
 {
+  "gravestone": {
+    "name": "Gravestone",
+    "status": "active",
+    "port": 26005,
+    "minecraft_version": "26.1.2",
+    "server_type": "fabric",
+    "jar_source": "",
+    "data_dir": "gravestone_26_1_2",
+    "created": "2026-08-16T02:30:00+00:00",
+    "notes": ""
+  },
   "jitterbug": {
     "name": "Jitterbug",
     "status": "inactive",
