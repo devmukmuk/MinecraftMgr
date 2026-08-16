@@ -477,6 +477,135 @@ typically can't hairpin a LAN client back to the router's own public IP,
 so `<realm>.gamenightbymike.com` won't resolve usefully from inside the
 house even with DNS correct. Paused here pending that test.
 
+## Realm-picker site + AUTOSTART trigger (Aug 16 2026)
+
+Alongside the connectivity work, a static realm-picker page
+(`minecraftmgr web build` → `public/index.html`, PR #19, issue #18) lists
+every realm from `servers.json` with its version, status, and connect
+address, meant for Cloudflare Pages — no router or oscar change needed
+for the page itself.
+
+Mid-build, the scope grew: an AUTOSTART button per non-running realm (PR
+for issue #20). That button needs something on oscar that can actually
+*start a process*, which is a different risk profile than a read-only
+page, so it got its own explicit design decisions:
+
+- **Reachability**: Cloudflare Tunnel (`cloudflared`), not a
+  port-forward. `cloudflared` makes an *outbound* connection from oscar
+  to Cloudflare's edge and gets a public hostname in return — no port
+  ever opens on the router, consistent with the rest of this migration.
+- **Access control**: one shared family PIN, sent as a request header,
+  checked with a constant-time comparison
+  (`hmac.compare_digest`) against a secret file on oscar — not
+  Cloudflare Access, since that would mean everyone needs a Google/email
+  login just to start a realm.
+- **Who's allowed to actually start a realm**: the daemon that runs
+  `screen -dmS <data_dir> ./start.sh` must run as the systemd
+  `User=minecraft`. This is the same hard rule the Velocity cutover
+  established the hard way (see "What had to run as `minecraft`" above)
+  — it now applies to a long-running service, not just interactive
+  commands, so it's enforced via the systemd unit's `User=` line instead
+  of "remember to switch shells."
+
+### What the code does
+
+- `src/minecraftmgr/services/trigger_service.py` — pure logic, no
+  network: `realm_running(data_dir)` greps `screen -ls` for a session
+  matching the realm's data dir; `start_realm(server, data_root)` refuses
+  to start a realm that's already running (avoids the duplicate-process
+  race hit during the Velocity cutover) and otherwise runs
+  `screen -dmS <data_dir> ./start.sh` with `cwd` set to the realm's data
+  directory; `verify_pin` does the constant-time PIN check.
+- `src/minecraftmgr/services/trigger_daemon.py` — a stdlib
+  `ThreadingHTTPServer` (no new dependency) exposing `GET /status`
+  (per-realm running/stopped) and `POST /start/<realm_id>` (PIN required
+  via the `X-Autostart-Pin` header), with CORS headers so the
+  Pages-hosted picker page can call it from a different origin.
+- `minecraftmgr trigger serve` — CLI entry point, refuses to start if the
+  PIN file doesn't exist yet rather than running with no access control.
+- The picker page's JS calls `GET /status` on load; realms that come
+  back `"stopped"` get an AUTOSTART button, realms that error out (no
+  daemon reachable yet, or a network hiccup) just don't show one — the
+  page stays fully usable as a plain address list either way.
+
+### Deploying it on oscar (not done yet — manual, needs Mike)
+
+1. **Install and authenticate `cloudflared`** (needs a browser, so this
+   has to be Mike, not automatable):
+   ```bash
+   curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+   sudo dpkg -i cloudflared.deb
+   cloudflared tunnel login
+   ```
+2. **Create the tunnel and route a hostname to it:**
+   ```bash
+   cloudflared tunnel create mc-trigger
+   cloudflared tunnel route dns mc-trigger trigger.gamenightbymike.com
+   ```
+3. **Point the tunnel at the local daemon port** in
+   `~/.cloudflared/config.yml`:
+   ```yaml
+   tunnel: mc-trigger
+   credentials-file: /home/minecraft/.cloudflared/<tunnel-id>.json
+   ingress:
+     - hostname: trigger.gamenightbymike.com
+       service: http://127.0.0.1:8787
+     - service: http_status:404
+   ```
+4. **Create the PIN file, as `minecraft`** (same permission boundary as
+   `forwarding.secret` — owner-only, no group access):
+   ```bash
+   mkdir -p /opt/mc/_trigger
+   printf '%s' 'choose-a-real-pin' > /opt/mc/_trigger/pin.secret
+   chmod 600 /opt/mc/_trigger/pin.secret
+   ```
+5. **systemd units** — both `User=minecraft`:
+   ```ini
+   # /etc/systemd/system/mc-trigger.service
+   [Unit]
+   Description=MinecraftMgr realm start/status trigger daemon
+   After=network.target
+
+   [Service]
+   User=minecraft
+   WorkingDirectory=/srv/mc
+   ExecStart=/usr/bin/minecraftmgr trigger serve
+   Restart=on-failure
+   RestartSec=10
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+   ```ini
+   # /etc/systemd/system/cloudflared-mc-trigger.service
+   [Unit]
+   Description=Cloudflare Tunnel for the realm trigger daemon
+   After=network.target
+
+   [Service]
+   User=minecraft
+   ExecStart=/usr/bin/cloudflared tunnel run mc-trigger
+   Restart=on-failure
+   RestartSec=10
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+6. **Verify:**
+   ```bash
+   curl https://trigger.gamenightbymike.com/status
+   curl -X POST -H "X-Autostart-Pin: choose-a-real-pin" \
+     https://trigger.gamenightbymike.com/start/jitterbug
+   ```
+
+### Verification status
+
+Not deployed yet — code + runbook only. Once live, confirm: `/status`
+reflects real `screen` state for both realms, a wrong PIN gets a 403 and
+starts nothing, and the picker page's AUTOSTART button actually shows up
+and works from a browser (not just curl), since the CORS preflight path
+is the one thing that can't be verified without a live daemon.
+
 ## Target layout
 
 ```
