@@ -528,38 +528,73 @@ page, so it got its own explicit design decisions:
   daemon reachable yet, or a network hiccup) just don't show one — the
   page stays fully usable as a plain address list either way.
 
-### Deploying it on oscar (not done yet — manual, needs Mike)
+### Deployed (Aug 16 2026)
 
-1. **Install and authenticate `cloudflared`** (needs a browser, so this
-   has to be Mike, not automatable):
-   ```bash
-   curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
-   sudo dpkg -i cloudflared.deb
-   cloudflared tunnel login
-   ```
-2. **Create the tunnel and route a hostname to it:**
+The plan above assumed a clean slate; reality had two surprises worth
+recording.
+
+**`cloudflared` was already installed and authenticated** — an existing
+tunnel (`mission-impossible`) was already live on this same domain,
+routing `gamenightbymike.com` and `mi.gamenightbymike.com` to some other
+app on `localhost:3000`, via a root-owned `/etc/cloudflared/config.yml`
+and systemd's `cloudflared.service`. Deliberately left untouched rather
+than adding an ingress rule to it — that would have meant restarting a
+service actively serving something unrelated, for a few seconds of
+downtime, to save creating one extra tunnel. Went with a second,
+independent tunnel (`mc-trigger`) instead, config kept under `mike`'s own
+home dir (`~/.cloudflared/mc-trigger-config.yml`, no root needed) rather
+than `/etc/cloudflared/`, specifically so it can never collide with the
+existing tunnel's config file.
+
+**`minecraftmgr` has no console-script entry point** — `pyproject.toml`
+never defined `[project.scripts]`, so the bare `minecraftmgr` command
+doesn't exist; every invocation this whole project has ever used is
+`python -m minecraftmgr`. The original runbook draft's
+`ExecStart=/usr/bin/minecraftmgr ...` would have failed immediately.
+Fixed by pointing `ExecStart` at the venv's `python -m minecraftmgr`
+directly rather than blocking deployment on a packaging fix.
+
+Actual steps, as run:
+
+1. **`cloudflared` login**: skipped — already authenticated as `mike`
+   from prior unrelated setup (`~/.cloudflared/cert.pem` already
+   present).
+2. **Create the tunnel and route DNS**, as `mike`, no `sudo`:
    ```bash
    cloudflared tunnel create mc-trigger
    cloudflared tunnel route dns mc-trigger trigger.gamenightbymike.com
    ```
-3. **Point the tunnel at the local daemon port** in
-   `~/.cloudflared/config.yml`:
+3. **Config**, as `mike`, in `~/.cloudflared/mc-trigger-config.yml`
+   (not `/etc/cloudflared/` — avoids touching the existing tunnel):
    ```yaml
-   tunnel: mc-trigger
-   credentials-file: /home/minecraft/.cloudflared/<tunnel-id>.json
+   tunnel: 0cf98b0b-51a4-4db5-bf9f-4480e618d45d
+   credentials-file: /home/mike/.cloudflared/0cf98b0b-51a4-4db5-bf9f-4480e618d45d.json
    ingress:
      - hostname: trigger.gamenightbymike.com
        service: http://127.0.0.1:8787
      - service: http_status:404
    ```
-4. **Create the PIN file, as `minecraft`** (same permission boundary as
+4. **Sync and install the package on oscar** — `/srv/mc` was 14 commits
+   behind `main` and on a long-dead feature branch, and had never had
+   `pip install -e .` run:
+   ```bash
+   cd /srv/mc
+   git checkout main
+   git pull
+   .venv/bin/pip install -e .
+   ```
+5. **PIN file, as `minecraft`** (same permission boundary as
    `forwarding.secret` — owner-only, no group access):
    ```bash
    mkdir -p /opt/mc/_trigger
-   printf '%s' 'choose-a-real-pin' > /opt/mc/_trigger/pin.secret
+   printf '%s' '<the real pin>' > /opt/mc/_trigger/pin.secret
    chmod 600 /opt/mc/_trigger/pin.secret
    ```
-5. **systemd units** — both `User=minecraft`:
+6. **systemd units**, as `mike` with `sudo` — `mc-trigger.service` runs
+   as `User=minecraft` (it's the one that actually starts realm
+   processes); the tunnel service runs as `User=mike` (it only proxies
+   HTTP to localhost, no realm-file access needed, and `mike` already
+   owns the tunnel credentials from step 2-3):
    ```ini
    # /etc/systemd/system/mc-trigger.service
    [Unit]
@@ -569,7 +604,7 @@ page, so it got its own explicit design decisions:
    [Service]
    User=minecraft
    WorkingDirectory=/srv/mc
-   ExecStart=/usr/bin/minecraftmgr trigger serve
+   ExecStart=/srv/mc/.venv/bin/python -m minecraftmgr trigger serve
    Restart=on-failure
    RestartSec=10
 
@@ -579,32 +614,45 @@ page, so it got its own explicit design decisions:
    ```ini
    # /etc/systemd/system/cloudflared-mc-trigger.service
    [Unit]
-   Description=Cloudflare Tunnel for the realm trigger daemon
-   After=network.target
+   Description=Cloudflare Tunnel - MinecraftMgr trigger daemon
+   After=network-online.target
+   Wants=network-online.target
 
    [Service]
-   User=minecraft
-   ExecStart=/usr/bin/cloudflared tunnel run mc-trigger
+   User=mike
+   TimeoutStartSec=15
+   Type=notify
+   ExecStart=/usr/bin/cloudflared --no-autoupdate --config /home/mike/.cloudflared/mc-trigger-config.yml tunnel run
    Restart=on-failure
-   RestartSec=10
+   RestartSec=5s
 
    [Install]
    WantedBy=multi-user.target
    ```
-6. **Verify:**
    ```bash
-   curl https://trigger.gamenightbymike.com/status
-   curl -X POST -H "X-Autostart-Pin: choose-a-real-pin" \
-     https://trigger.gamenightbymike.com/start/jitterbug
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now mc-trigger.service cloudflared-mc-trigger.service
    ```
+
+`mc-trigger.service` flapped through 15 restarts with `status=203/EXEC`
+(systemd couldn't exec the venv's `python`) before settling — timing
+lines up with `pip install -e .` from step 4 still reinstalling the venv
+concurrently on the same box, not a real config problem. Stable since,
+no repeat.
 
 ### Verification status
 
-Not deployed yet — code + runbook only. Once live, confirm: `/status`
-reflects real `screen` state for both realms, a wrong PIN gets a 403 and
-starts nothing, and the picker page's AUTOSTART button actually shows up
-and works from a browser (not just curl), since the CORS preflight path
-is the one thing that can't be verified without a live daemon.
+**Confirmed live**, over the real public URL (not just localhost):
+`curl https://trigger.gamenightbymike.com/status` returns real `screen`
+state for both realms; a wrong PIN on `/start/<realm>` gets a `403` and
+starts nothing; an `OPTIONS` preflight against `/start/<realm>` returns
+the correct CORS headers for a cross-origin fetch.
+
+**Not yet confirmed**: the AUTOSTART button clicked from an actual
+browser on the deployed picker page — curl can exercise the preflight
+response but not a real button-click-to-fetch flow, and the picker page
+itself isn't on Cloudflare Pages yet (still just the local mockup/build
+output).
 
 ## Target layout
 
