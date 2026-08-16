@@ -268,6 +268,43 @@ sudo systemctl status mc-proxy
    rotate it) and confirm the DDNS cron job updates Cloudflare within 5
    minutes and the server is reachable again.
 
+### Testing a forced-host from inside the LAN, without a phone
+
+A raw LAN-IP connection (e.g. `192.168.1.113:25565` typed directly into the
+client) sends that IP itself as the hostname in the Minecraft handshake, which
+matches no `[forced-hosts]` entry — you just get whatever `try` falls back to,
+never the realm you actually meant to test. And typing the real domain
+(`jitterbug.gamenightbymike.com`) doesn't work from inside the house either —
+most home routers (AT&T's included) can't hairpin a LAN client back out to the
+router's own public IP.
+
+Fix: override DNS locally so the *hostname* the client sends is still correct,
+but it resolves to oscar's LAN IP instead of round-tripping out to the
+internet. Add a line to `C:\Windows\System32\drivers\etc\hosts` (Notepad **as
+Administrator**) per realm you want to test:
+
+```
+192.168.1.113 gravestone.gamenightbymike.com
+192.168.1.113 jitterbug.gamenightbymike.com
+```
+
+Multiple hostnames pointing at the same IP don't conflict — each still sends
+its own distinct hostname in the handshake, so Velocity's `forced-hosts`
+routes each to the right backend. Remove (or `#`-comment) the lines once
+you're done, so real DNS takes over again.
+
+**Why no port is needed**, and how it actually resolves: connecting to a
+hostname with no port makes the client first try an SRV lookup
+(`_minecraft._tcp.<hostname>`) for a custom port. A hosts-file entry only
+overrides plain hostname→IP — it does **not** cover SRV records, so that
+lookup still goes to real DNS. None of the Velocity-fronted realms have an SRV
+record (that's only used for the old modded/dedicated-port pattern), so the
+client falls back to Minecraft's default port, `25565`. It then connects to
+`<hosts-file IP>:25565` and sends the real hostname in the handshake; Velocity
+reads that hostname and internally forwards to whichever backend port that
+realm actually runs on (per its `[servers]` entry in `velocity.toml`) — the
+client never sees or specifies that port at all.
+
 ## ============= Adding a new realm later
 
 1. `mkdir /opt/mc/<realm>`, drop in the jar, `eula=true`, set
