@@ -169,12 +169,78 @@ feature.
 - Porting the oscar-only `start_all`/`stop_all`/`config_ufw_rules` scripts
   (separate, already-tracked in `DEP.md`)
 
+## Verified live (Aug 16 2026)
+
+Deployed to oscar and run for real, not just tested: `provision` scaffolded
+`testrealm` from a checksum-verified real Paper 26.2 build, generated a
+genuinely blank world, correctly patched `config/paper-global.yml`'s
+Velocity trust block, and stopped cleanly. Registered in `servers.json`,
+wired into `velocity.toml` (edited via the `mike` key, restarted by hand in
+a `minecraft` shell), and started for real end-to-end through the deployed
+AUTOSTART button on the picker page — confirmed via `ps aux` on oscar, not
+just the page's own status report.
+
 ## Open work
 
-- Not yet deployed/run for real on oscar — code + tests only until the user
-  runs it live.
 - `mem_min`/`mem_max` aren't modeled in `ServerEntry` (an existing decision
   from the Velocity work, not revisited here) — `provision` takes them as
   CLI flags with defaults, doesn't persist them to `servers.json`.
 - No port-uniqueness validation against other registered realms yet (same
-  gap `REG.md` already flags for `server add`).
+  gap `REG.md` already flags for `server add`) — see "Future work" below,
+  this turned out to matter: two real collisions already exist among the
+  unregistered sitting realms (`poop_1_21_1`/`poop_1_21_3` both on `28314`;
+  `arbor_1_21_10` on `26005`, the same port `gravestone` uses).
+
+## Future work: modifying an already-active realm
+
+Everything above covers *creating* a realm. Once one exists and is running,
+there's currently no tooling at all for changing it short of manual
+stop-edit-restart on oscar — surfaced by name while first trying the
+feature out. Proposed shape for each, not yet built:
+
+- **Console command injection (the unifying piece)**: generalize the
+  `screen -X stuff` mechanism `trigger_service.stop_realm()` already uses
+  for the in-game `stop` command into a reusable
+  `send_console_command(server, data_root, command, *, runner=...)`. This
+  one primitive is what actually unlocks most of the list below, live, with
+  no restart:
+  - **Whitelist**: `whitelist add <player>` / `whitelist remove <player>` /
+    `whitelist reload` are already real Minecraft console commands. A
+    `minecraftmgr realm console <id> "<command>"` wrapper covers this
+    immediately; a friendlier `realm whitelist add/remove <id> <player>`
+    could follow later.
+  - **Rules**: server-properties-level settings (difficulty, pvp,
+    spawn-protection) still need stop → edit `server.properties` → restart.
+    In-world `/gamerule` changes (keepInventory, mobGriefing, etc.) go
+    through the same console injection, live, no restart.
+- **Jar version update**: no command exists yet. Shape: stop the realm
+  (`stop_realm`, already built) → `ensure_jar_cached()` for the new version
+  (already validates Paper via the manifest check from #33) → back up the
+  old jar (`.bak` suffix, same convention as the gravestone/jitterbug
+  conversions) → swap it in → `server update --mc-version` → start + a
+  `wait_for_ready()`-style boot check (reusable from `provision_service`,
+  just without the "first boot" framing since the world already exists).
+- **Port change**: no command exists yet, and it's genuinely three files
+  (`server.properties`, `start.sh`, `velocity.toml`), so the shape mirrors
+  `provision`'s handoff pattern exactly: a command mutates the realm's own
+  `server.properties`/`start.sh`, then prints the `velocity.toml` diff and a
+  reminder that both the realm and Velocity need restarting — it should
+  never touch `velocity.toml` directly, same reasoning as `provision`.
+- **Port-uniqueness audit**: the two real collisions found this session
+  (`poop_1_21_1`/`poop_1_21_3` sharing `28314`; `arbor_1_21_10` reusing
+  `gravestone`'s `26005`) came from *unregistered* realms' `server.properties`
+  files, not from `servers.json` — so a useful check can't just validate
+  `servers.json` entries against each other (that's a narrower, separate fix
+  worth doing in `REG` regardless). A `minecraftmgr realm audit-ports`
+  command that runs `inspect`-style port discovery across every folder in
+  `data_root`, registered or not, would catch what a registry-only check
+  can't.
+- **Seed**: not a live-modification concern — a world's seed only affects
+  chunks that don't exist yet, so "changing" the seed of a realm with an
+  already-generated world means starting over with a blank world, not
+  editing the running one. The real gap is `provision` has no `--seed`
+  option at all yet (Paper just picks a random one on first boot);  adding
+  one is a small, contained change to `scaffold_realm_dir()`'s
+  `server.properties` rendering.
+- **Name**: already works today, no new feature needed —
+  `minecraftmgr server update <id> --name "..."` + `minecraftmgr web build`.

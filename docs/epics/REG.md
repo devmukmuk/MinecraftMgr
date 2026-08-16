@@ -44,4 +44,10 @@ else (backups, deploys) looks realms up here rather than scanning
   only prints a subset of fields (no `jar_source`, `data_dir`, `notes`,
   `created` in the table).
 - No validation that `port` is unique across entries, or that `data_dir`
-  doesn't collide with another realm's.
+  doesn't collide with another realm's. Matters more than it sounds: two
+  real collisions already exist among realms not even in the registry yet
+  (`poop_1_21_1`/`poop_1_21_3` both on `28314`, `arbor_1_21_10` reusing
+  `gravestone`'s `26005`) — a `servers.json`-only uniqueness check wouldn't
+  have caught either. See [PROV-design.md](PROV-design.md)'s "Future work"
+  section for a proposed `realm audit-ports` command that scans actual
+  realm folders instead.
