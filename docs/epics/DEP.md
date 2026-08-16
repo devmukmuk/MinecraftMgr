@@ -88,11 +88,20 @@ This epic is documentation- and infra-config-heavy rather than
   version, status, and connect address, no router/oscar change needed.
   An AUTOSTART button (issue #20) adds a way to start a stopped realm
   from that page via a Cloudflare Tunnel + PIN-gated daemon on oscar
-  (`minecraftmgr trigger serve`, `User=minecraft`) — code is written and
-  tested, but the Cloudflare Pages project, the tunnel, and the systemd
-  units are all manual one-time setup on oscar that hasn't happened yet.
-  See [oscar-migration-plan.md](../architecture/oscar-migration-plan.md)'s
-  Realm-picker site section for the full runbook.
+  (`minecraftmgr trigger serve`, `User=minecraft`). **The trigger daemon
+  is deployed and confirmed live** (Aug 16 2026) at
+  `https://trigger.gamenightbymike.com` — see
+  [oscar-migration-plan.md](../architecture/oscar-migration-plan.md)'s
+  Realm-picker site section for what that actually took. Still open: the
+  picker page itself isn't on Cloudflare Pages yet (that project hasn't
+  been created), so the AUTOSTART button has nothing to render it yet,
+  and the button's real browser click-to-fetch flow is unverified.
+- `pyproject.toml` has no `[project.scripts]` entry point, so the bare
+  `minecraftmgr` command has never actually existed — every runbook and
+  systemd unit has to use `python -m minecraftmgr` instead. Found while
+  deploying the trigger daemon (its `ExecStart` assumed the entry point
+  existed). Worth fixing properly at some point, low priority since the
+  `python -m` form works fine everywhere it's used today.
 - Oscar's `/srv/mc` checkout has no working GitHub credentials (cloned
   over plain HTTPS, no `gh` installed) — commands run on oscar that
   mutate `servers.json` (like `server add`) have no path back into git.
