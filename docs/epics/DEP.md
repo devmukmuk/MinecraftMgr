@@ -83,6 +83,16 @@ This epic is documentation- and infra-config-heavy rather than
   verification unless every realm's `start.sh` forces
   `-Djava.net.preferIPv4Stack=true`. Worth fixing at the network level
   eventually, but the JVM flag is the practical fix for now.
+- A realm-picker static site (`minecraftmgr web build`, PR #19) renders
+  `servers.json` into a page meant for Cloudflare Pages — every realm's
+  version, status, and connect address, no router/oscar change needed.
+  An AUTOSTART button (issue #20) adds a way to start a stopped realm
+  from that page via a Cloudflare Tunnel + PIN-gated daemon on oscar
+  (`minecraftmgr trigger serve`, `User=minecraft`) — code is written and
+  tested, but the Cloudflare Pages project, the tunnel, and the systemd
+  units are all manual one-time setup on oscar that hasn't happened yet.
+  See [oscar-migration-plan.md](../architecture/oscar-migration-plan.md)'s
+  Realm-picker site section for the full runbook.
 - Oscar's `/srv/mc` checkout has no working GitHub credentials (cloned
   over plain HTTPS, no `gh` installed) — commands run on oscar that
   mutate `servers.json` (like `server add`) have no path back into git.
