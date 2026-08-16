@@ -15,6 +15,7 @@ folder's `install.sh`.
 | DEP | Oscar Deployment & Hosting — Velocity proxy, systemd, Cloudflare DNS, `docs/architecture/` | [DEP.md](DEP.md) |
 | TST | Testing & Validation — `tests/` | [TST.md](TST.md) |
 | DOC | Documentation & Examples — `docs/`, `README.md` | [DOC.md](DOC.md) |
+| PROV | Realm Provisioning — creating/activating realms end to end | [PROV-design.md](PROV-design.md) |
 
 ## Conventions enforced by the git hooks
 

@@ -12,6 +12,7 @@ from minecraftmgr.services.trigger_service import (
     TriggerError,
     realm_running,
     start_realm,
+    stop_realm,
     verify_pin,
 )
 
@@ -126,3 +127,80 @@ def test_verify_pin_missing_file_rejects() -> None:
     """verify_pin rejects everything if the secret file doesn't exist yet."""
 
     assert verify_pin(Path("does/not/exist.secret"), "4321") is False
+
+
+class _StatefulRunner:
+    """Fake runner simulating a screen session that a `stuff` command can (or can't) stop."""
+
+    def __init__(self, session_name: str, *, stuff_stops_it: bool) -> None:
+        self.session_name = session_name
+        self.stuff_stops_it = stuff_stops_it
+        self.running = True
+        self.killed = False
+        self.calls: list[list[str]] = []
+
+    def __call__(self, args: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess:
+        self.calls.append(list(args))
+
+        if args[:2] == ["screen", "-ls"]:
+            if self.running and not self.killed:
+                output = f"There is a screen on:\n        1.{self.session_name}\t(date)\t(Detached)\n"
+            else:
+                output = "No Sockets found.\n"
+            return subprocess.CompletedProcess(args, 0, stdout=output, stderr="")
+
+        if args[:2] == ["screen", "-S"] and "stuff" in args:
+            if self.stuff_stops_it:
+                self.running = False
+            return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+        if args[:2] == ["pgrep", "-f"]:
+            pids = "1111\n2222\n" if self.running and not self.killed else ""
+            return subprocess.CompletedProcess(args, 0, stdout=pids, stderr="")
+
+        if args[0] == "kill":
+            self.killed = True
+            return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+        return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+
+def _no_sleep(_seconds: float) -> None:
+    return None
+
+
+def test_stop_realm_noop_if_not_running(tmp_path: Path) -> None:
+    """Stopping an already-stopped realm sends no commands at all."""
+
+    runner = _StatefulRunner("gravestone_26_1_2", stuff_stops_it=True)
+    runner.running = False
+    entry = _entry("gravestone", "gravestone_26_1_2")
+
+    stop_realm(entry, tmp_path, runner=runner, sleep=_no_sleep)
+
+    assert runner.calls == [["screen", "-ls"]]
+
+
+def test_stop_realm_graceful_stop_succeeds(tmp_path: Path) -> None:
+    """A screen session that responds to `stuff` stops without ever needing a kill."""
+
+    runner = _StatefulRunner("gravestone_26_1_2", stuff_stops_it=True)
+    entry = _entry("gravestone", "gravestone_26_1_2")
+
+    stop_realm(entry, tmp_path, runner=runner, sleep=_no_sleep, wait_seconds=5, poll_interval=1)
+
+    assert not any(call[0] == "kill" for call in runner.calls)
+    assert not runner.running
+
+
+def test_stop_realm_falls_back_to_kill_when_stuff_does_not_take(tmp_path: Path) -> None:
+    """A screen session that ignores `stuff` (the jitterbug flakiness) gets killed as a fallback."""
+
+    runner = _StatefulRunner("jitterbug_1_21_1", stuff_stops_it=False)
+    entry = _entry("jitterbug", "jitterbug_1_21_1")
+
+    stop_realm(entry, tmp_path, runner=runner, sleep=_no_sleep, wait_seconds=3, poll_interval=1)
+
+    kill_calls = [call for call in runner.calls if call[0] == "kill"]
+    assert len(kill_calls) == 1
+    assert set(kill_calls[0][1:]) == {"1111", "2222"}

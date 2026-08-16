@@ -1,0 +1,13 @@
+#!/bin/bash
+
+set -u
+umask 0027
+cd "$(dirname "$0")" || exit 1
+
+NAME="__NAME__"
+PORT=__PORT__
+MEM_MIN="__MEM_MIN__"
+MEM_MAX="__MEM_MAX__"
+JAR="server_${NAME}.jar"
+
+exec __JAVA_BIN__ -Djava.net.preferIPv4Stack=true -Xms$MEM_MIN -Xmx$MEM_MAX -jar "$JAR" nogui --port $PORT

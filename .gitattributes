@@ -1,0 +1,5 @@
+# Shell scripts run on oscar (Linux) or as git hooks -- must never get CRLF
+# line endings regardless of a Windows checkout's core.autocrlf setting.
+*.sh text eol=lf
+*.sh.template text eol=lf
+tools/git-hooks/* text eol=lf

@@ -6,6 +6,7 @@ import typer
 from rich.console import Console
 
 from minecraftmgr.commands.backup import app as backup_app
+from minecraftmgr.commands.realm import app as realm_app
 from minecraftmgr.commands.server import app as server_app
 from minecraftmgr.commands.trigger import app as trigger_app
 from minecraftmgr.commands.web import app as web_app
@@ -21,6 +22,7 @@ app.add_typer(server_app, name="server")
 app.add_typer(backup_app, name="backup")
 app.add_typer(web_app, name="web")
 app.add_typer(trigger_app, name="trigger")
+app.add_typer(realm_app, name="realm")
 
 console = Console()
 
