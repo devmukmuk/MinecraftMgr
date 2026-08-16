@@ -1,0 +1,375 @@
+<title>Game Night by Mike</title>
+<style>
+  :root {
+    --bg: #f1ecdf;
+    --surface: #fbf8f0;
+    --surface-raised: #ffffff;
+    --ink: #26221a;
+    --ink-dim: #6b6455;
+    --line: #ddd2b8;
+    --accent: #b9711a;
+    --accent-ink: #fff8ec;
+    --good: #4f7942;
+    --good-bg: #e4ecd9;
+    --muted: #948c78;
+    --muted-bg: #eae4d3;
+    --shadow: 0 1px 2px rgba(38,34,26,0.06), 0 6px 16px -8px rgba(38,34,26,0.18);
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14171c;
+      --surface: #1b1f26;
+      --surface-raised: #21262e;
+      --ink: #ece5d3;
+      --ink-dim: #979082;
+      --line: #2b313b;
+      --accent: #e8a33d;
+      --accent-ink: #201404;
+      --good: #8fbb74;
+      --good-bg: #24301f;
+      --muted: #6b7280;
+      --muted-bg: #232830;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 10px 24px -10px rgba(0,0,0,0.55);
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #14171c;
+    --surface: #1b1f26;
+    --surface-raised: #21262e;
+    --ink: #ece5d3;
+    --ink-dim: #979082;
+    --line: #2b313b;
+    --accent: #e8a33d;
+    --accent-ink: #201404;
+    --good: #8fbb74;
+    --good-bg: #24301f;
+    --muted: #6b7280;
+    --muted-bg: #232830;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 10px 24px -10px rgba(0,0,0,0.55);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 2.75rem 1.5rem 5rem;
+  }
+
+  header.hero {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .eyebrow {
+    font-family: 'Cascadia Code', 'Consolas', 'SFMono-Regular', Menlo, monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  h1 {
+    font-family: Rockwell, 'Roboto Slab', 'Noto Serif', Georgia, serif;
+    font-weight: 700;
+    font-size: clamp(2.1rem, 5vw, 2.9rem);
+    margin: 0;
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+
+  .tagline {
+    color: var(--ink-dim);
+    font-size: 1.02rem;
+    max-width: 46ch;
+  }
+
+  .torch-rule {
+    height: 3px;
+    margin: 1.6rem 0 2.2rem;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent 70%);
+  }
+
+  h2.section-title {
+    font-family: Rockwell, 'Roboto Slab', 'Noto Serif', Georgia, serif;
+    font-size: 1.15rem;
+    margin: 0 0 0.3rem;
+    letter-spacing: -0.01em;
+  }
+
+  .section-sub {
+    color: var(--ink-dim);
+    font-size: 0.92rem;
+    margin: 0 0 1.1rem;
+    max-width: 60ch;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1.1rem 1.15rem 1rem;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    transition: transform 160ms ease, box-shadow 160ms ease;
+  }
+
+  .card:hover { transform: translateY(-2px); }
+
+  .card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.6rem;
+  }
+
+  .realm-name {
+    font-family: Rockwell, 'Roboto Slab', 'Noto Serif', Georgia, serif;
+    font-weight: 700;
+    font-size: 1.28rem;
+    margin: 0;
+  }
+
+  .version-badge {
+    font-family: 'Cascadia Code', 'Consolas', 'SFMono-Regular', Menlo, monospace;
+    font-size: 0.74rem;
+    color: var(--ink-dim);
+  }
+
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-weight: 600;
+    padding: 0.24rem 0.55rem;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  .status .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .status.active { color: var(--good); background: var(--good-bg); }
+  .status.active .dot { animation: flicker 2.6s ease-in-out infinite; }
+  .status.inactive { color: var(--muted); background: var(--muted-bg); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .status.active .dot { animation: none; }
+  }
+
+  @keyframes flicker {
+    0%, 100% { opacity: 1; }
+    45% { opacity: 0.55; }
+    52% { opacity: 1; }
+    78% { opacity: 0.7; }
+  }
+
+  .addr-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 0.5rem 0.6rem;
+  }
+
+  .addr-row code {
+    font-family: 'Cascadia Code', 'Consolas', 'SFMono-Regular', Menlo, monospace;
+    font-size: 0.82rem;
+    color: var(--ink);
+    overflow-x: auto;
+    white-space: nowrap;
+    flex: 1;
+    user-select: all;
+  }
+
+  .copy-btn {
+    font-family: inherit;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    background: var(--accent);
+    border: none;
+    border-radius: 5px;
+    padding: 0.36rem 0.6rem;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .copy-btn:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .copy-btn[data-copied="true"] { background: var(--good); color: #fff; }
+
+  details.howto summary {
+    cursor: pointer;
+    font-size: 0.82rem;
+    color: var(--ink-dim);
+    list-style: none;
+  }
+
+  details.howto summary::-webkit-details-marker { display: none; }
+  details.howto summary::before {
+    content: "+ ";
+    color: var(--accent);
+    font-weight: 700;
+  }
+  details.howto[open] summary::before { content: "\2212 "; }
+
+  details.howto ol {
+    margin: 0.5rem 0 0;
+    padding-left: 1.1rem;
+    font-size: 0.85rem;
+    color: var(--ink-dim);
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.2rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.78rem;
+    color: var(--ink-dim);
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="hero">
+    <span class="eyebrow">mc.gamenightbymike.com</span>
+    <h1>Game Night by Mike</h1>
+    <p class="tagline">Pick a realm, copy its address, paste it into the Minecraft launcher. No ports, nothing to install.</p>
+  </header>
+  <div class="torch-rule"></div>
+
+  <section>
+    <h2 class="section-title">Realms</h2>
+    <p class="section-sub">Every realm registered in servers.json, with the version it needs and its connect address.</p>
+
+    <div class="grid">
+      <article class="card">
+        <div class="card-top">
+          <div>
+            <p class="realm-name">Gravestone</p>
+            <span class="version-badge">Minecraft 26.1.2 &middot; Paper</span>
+          </div>
+          <span class="status active"><span class="dot"></span>Online</span>
+        </div>
+        <div class="addr-row">
+          <code>gravestone.gamenightbymike.com</code>
+          <button class="copy-btn" data-copy="gravestone.gamenightbymike.com">Copy</button>
+        </div>
+        <details class="howto">
+          <summary>How to join</summary>
+          <ol>
+            <li>Open the Minecraft launcher, select <b>26.1.2</b>, and press Play.</li>
+            <li>Multiplayer &rarr; Add Server.</li>
+            <li>Paste the address above. Leave the port blank.</li>
+          </ol>
+        </details>
+      </article>
+      <article class="card">
+        <div class="card-top">
+          <div>
+            <p class="realm-name">Jitterbug</p>
+            <span class="version-badge">Minecraft 1.21.1 &middot; Paper</span>
+          </div>
+          <span class="status inactive"><span class="dot"></span>Test realm</span>
+        </div>
+        <div class="addr-row">
+          <code>jitterbug.gamenightbymike.com</code>
+          <button class="copy-btn" data-copy="jitterbug.gamenightbymike.com">Copy</button>
+        </div>
+        <details class="howto">
+          <summary>How to join</summary>
+          <ol>
+            <li>Open the Minecraft launcher, select <b>1.21.1</b>, and press Play.</li>
+            <li>Multiplayer &rarr; Add Server.</li>
+            <li>Paste the address above. Leave the port blank.</li>
+          </ol>
+        </details>
+      </article>
+    </div>
+  </section>
+
+  <footer>
+    Generated from servers.json by <code>minecraftmgr web build</code>.
+  </footer>
+
+</div>
+
+<script>
+  document.querySelectorAll('.copy-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var text = btn.getAttribute('data-copy');
+      function done() {
+        btn.textContent = 'Copied';
+        btn.setAttribute('data-copied', 'true');
+        setTimeout(function () {
+          btn.textContent = 'Copy';
+          btn.removeAttribute('data-copied');
+        }, 1400);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () {
+          var code = btn.previousElementSibling;
+          if (code) {
+            var range = document.createRange();
+            range.selectNode(code);
+            var sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+          }
+        });
+      } else {
+        var code = btn.previousElementSibling;
+        if (code) {
+          var range = document.createRange();
+          range.selectNode(code);
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }
+      }
+    });
+  });
+</script>
