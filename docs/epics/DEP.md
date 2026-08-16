@@ -34,7 +34,21 @@ This epic is documentation- and infra-config-heavy rather than
   untracked. This replaced an earlier design that kept world saves inside
   the git tree and used `git stash` before every pull — dropped because
   world saves are large, binary, autosave-churned files that don't belong
-  in git history.
+  in git history. **Live on oscar** since the migration's Step 0 (mount
+  flip repointing the realm-data disk from `/srv/minecraft` to `/opt/mc`,
+  fresh `/srv/mc` checkout) — this is the actual current layout, not a
+  target state. See [docs/workflows/](../workflows/README.md) for the
+  runbooks that operate on a realm once it's living in this layout.
+- **Realm-picker site + AUTOSTART**: `minecraftmgr web build` renders
+  `servers.json` into `public/index.html`, deployed on Cloudflare Workers
+  (static assets, `wrangler.jsonc`) at `gamenightbymike.com`. The AUTOSTART
+  button on a stopped realm's card calls a PIN-gated trigger daemon
+  (`minecraftmgr trigger serve`, `User=minecraft` only) reached through a
+  Cloudflare Tunnel — no port-forward. **Confirmed live end-to-end**
+  (Aug 16 2026): a real button click on the deployed page started a real
+  realm process on oscar, verified via `ps aux`, not just the page's own
+  status report — see [PROV-design.md](PROV-design.md)'s "Verified live"
+  section.
 - **Deploy = pull, then restart**: `git push` locally → `ssh oscar` →
   `minecraftmgr backup run --all` (safety snapshot, independent of git) →
   `git pull` → `systemctl restart mc-<realm>` for whichever realms
@@ -82,19 +96,11 @@ This epic is documentation- and infra-config-heavy rather than
   verification unless every realm's `start.sh` forces
   `-Djava.net.preferIPv4Stack=true`. Worth fixing at the network level
   eventually, but the JVM flag is the practical fix for now.
-- A realm-picker static site (`minecraftmgr web build`, PR #19) renders
-  `servers.json` into a page meant for Cloudflare Pages — every realm's
-  version, status, and connect address, no router/oscar change needed.
-  An AUTOSTART button (issue #20) adds a way to start a stopped realm
-  from that page via a Cloudflare Tunnel + PIN-gated daemon on oscar
-  (`minecraftmgr trigger serve`, `User=minecraft`). **The trigger daemon
-  is deployed and confirmed live** (Aug 16 2026) at
-  `https://trigger.gamenightbymike.com` — see
-  [oscar-migration-plan.md](../architecture/oscar-migration-plan.md)'s
-  Realm-picker site section for what that actually took. Still open: the
-  picker page itself isn't on Cloudflare Pages yet (that project hasn't
-  been created), so the AUTOSTART button has nothing to render it yet,
-  and the button's real browser click-to-fetch flow is unverified.
+- The Cloudflare Workers project for the picker site still scans the repo
+  root and pip-installs from `pyproject.toml` during CI (noise, not a
+  failure — fixed the actual build failure via `wrangler.jsonc`, PR #32).
+  Changing the dashboard's "Root directory" setting to `public` would stop
+  that scan; not yet confirmed done.
 - `pyproject.toml` has no `[project.scripts]` entry point, so the bare
   `minecraftmgr` command has never actually existed — every runbook and
   systemd unit has to use `python -m minecraftmgr` instead. Found while
