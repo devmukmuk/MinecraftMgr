@@ -196,7 +196,10 @@ just the page's own status report.
 Everything above covers *creating* a realm. Once one exists and is running,
 there's currently no tooling at all for changing it short of manual
 stop-edit-restart on oscar — surfaced by name while first trying the
-feature out. Proposed shape for each, not yet built:
+feature out. The manual procedure for each is written out in full in
+[docs/workflows/](../workflows/README.md) (one runbook per workflow, each
+with an automation-status line); what follows here is the proposed shape
+for automating each one, not yet built:
 
 - **Console command injection (the unifying piece)**: generalize the
   `screen -X stuff` mechanism `trigger_service.stop_realm()` already uses
