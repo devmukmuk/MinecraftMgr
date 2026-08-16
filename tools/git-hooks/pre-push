@@ -16,6 +16,34 @@
 #
 # (.git/hooks/ isn't tracked by git, so this has to be copied in per-clone.)
 
+# Find repository root (needed before the branch-name check too)
+repo_root=$(git rev-parse --show-toplevel)
+
+# --- Realm-picker site freshness check ---
+# public/index.html is generated from servers.json by `minecraftmgr web
+# build` and deployed as-is by Cloudflare Pages -- there's no build step
+# on Cloudflare's end. If it's stale, the live site silently drifts from
+# the real registry.
+venv_python="$repo_root/.venv/Scripts/python.exe"
+if [ ! -x "$venv_python" ]; then
+    venv_python="$repo_root/.venv/bin/python"
+fi
+
+if [ -x "$venv_python" ] && [ -f "$repo_root/public/index.html" ]; then
+    tmp_site=$(mktemp)
+    if "$venv_python" -m minecraftmgr web build --out "$tmp_site" >/dev/null 2>&1; then
+        if ! diff -q "$tmp_site" "$repo_root/public/index.html" >/dev/null 2>&1; then
+            echo "ERROR: public/index.html is stale relative to servers.json." >&2
+            echo "" >&2
+            echo "  Run: minecraftmgr web build" >&2
+            echo "  Then commit the updated public/index.html." >&2
+            rm -f "$tmp_site"
+            exit 1
+        fi
+    fi
+    rm -f "$tmp_site"
+fi
+
 # Get current branch
 branch=$(git symbolic-ref --short HEAD 2>/dev/null)
 
@@ -30,9 +58,6 @@ case "$branch" in
         exit 0
         ;;
 esac
-
-# Find repository root
-repo_root=$(git rev-parse --show-toplevel)
 
 # Epic registry
 epic_file="$repo_root/config/git/epics.txt"
