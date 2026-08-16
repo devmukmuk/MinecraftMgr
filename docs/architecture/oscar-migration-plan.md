@@ -57,6 +57,41 @@ holding all 9 realms directly, each mixing config with world data:
   `logs/`) weren't inspected — triage those by hand during migration
   (move into the repo if they're real docs/notes, discard if not).
 
+## Capacity (checked Aug 2026)
+
+```
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme0n1p4  147G   45G   95G  33% /
+/dev/nvme0n1p7  688G   29G  625G   5% /srv/minecraft
+/dev/sdb1       5.5T  4.4T  841G  85% /mnt/backup
+```
+
+Realm data totals ~32GB (`cave_1_21_1` and `river_1_21_1` are the largest
+at ~4.3-4.4G each), plus the ~807M jar cache — call it ~34GB to migrate.
+
+**`/opt` is not its own filesystem — it lives on root** (`nvme0n1p4`).
+`/srv/minecraft`'s disk (`nvme0n1p7`) is dedicated, 688G, and only 5%
+used. Putting `/opt/mc` on root would mean world data — which only grows,
+forever, via autosave — competes with the OS for space on a 147G disk
+already a third full. That's backwards: the big dedicated disk should
+back `/opt/mc`, and the small git checkout (source + docs, no data)
+should live on root, where 95G is overkill anyway. **This changes the
+runbook below** — see [Step 0](#0-repoint-optmc-at-the-spacious-disk).
+
+**`/mnt/backup` is at 85% (841G free of 5.5T).** Real headroom, but not
+huge relative to 4.4T already there. Don't retire the old backup script's
+"keep last 3" retention (see [Step 4](#4-retire-the-old-backup-script))
+until `minecraftmgr backup` has an equivalent — unbounded archive growth
+on a disk that's already 85% full will bite fairly quickly.
+
+**`gatorland_26_2/` is 4.0K — essentially empty.** Its directory
+timestamp matches the same day as this discovery, same as the top-level
+`/srv/minecraft` dir and `templates/`. That reads as a realm mid-setup
+(no `world/`, no jar dropped in yet), not a normal migration target.
+Confirm its actual state before running the per-realm steps below against
+it — it may need to skip straight to being scaffolded fresh in the new
+layout instead of migrated.
+
 ## Target layout
 
 ```
@@ -110,16 +145,40 @@ drive it — see [Out of scope](#out-of-scope)).
 
 ## Execution runbook
 
-Run once, on oscar. `df -h /opt /srv/minecraft /mnt/backup` first — some
-realm `world/` dirs plus the ~800MB jar cache need to fit on whatever
-filesystem backs `/opt`, and if `/opt` is a different filesystem than
-`/srv/minecraft`, the moves below are real copies (via `rsync`, not a bare
-`mv`) that need headroom for both copies to exist briefly.
+### 0. Repoint `/opt/mc` at the spacious disk
 
-### 0. One-time setup
+Since `nvme0n1p7` already holds every realm's data and has 625G free,
+repoint its *mountpoint* from `/srv/minecraft` to `/opt/mc` instead of
+copying ~34GB of world data across filesystems. This makes the migration
+mostly free (metadata only) rather than an hours-long `rsync`:
 
 ```bash
-sudo mkdir -p /opt/mc/_jarcache
+# stop every realm first
+/srv/minecraft/Scripts/stop_all_minecraft_servers.sh
+# (that script's array is stale -- confirm with `screen -list` that
+#  nothing is still running before continuing)
+
+sudo umount /srv/minecraft
+
+# edit /etc/fstab: change the nvme0n1p7 line's mountpoint from
+# /srv/minecraft to /opt/mc -- verify only that one line changed
+sudo sed -i 's#/srv/minecraft#/opt/mc#' /etc/fstab
+
+sudo mkdir -p /opt/mc
+sudo mount /opt/mc
+
+df -h /opt/mc   # expect ~688G size, ~29G used, matching the old /srv/minecraft numbers
+```
+
+`/opt/mc` now directly contains what used to be at `/srv/minecraft`: all
+9 realm folders (already correctly named — folder name == `data_dir`),
+`templates/`, `Scripts/`, and the leftover cruft. Nothing needs to be
+copied for the realms themselves.
+
+The git checkout is small (source + docs, no data) and fits comfortably
+on root:
+
+```bash
 sudo mkdir -p /srv/mc
 cd /srv/mc
 git clone https://github.com/devmukmuk/MinecraftMgr.git .
@@ -133,34 +192,23 @@ paths:
 EOF
 ```
 
-### 1. Move the shared jar cache
+### 1. Rename the shared jar cache
+
+Same filesystem now, so this is an instant rename, not a copy:
 
 ```bash
-rsync -a --info=progress2 /srv/minecraft/templates/ /opt/mc/_jarcache/
-# verify, then:
-rm -rf /srv/minecraft/templates
+mv /opt/mc/templates /opt/mc/_jarcache
 ```
 
-### 2. Migrate each realm (repeat per realm)
+### 2. Register each realm (repeat per realm)
+
+No data movement needed — each realm's files are already sitting at the
+right path (`/opt/mc/<data_dir>/`) after the remount. This step is just
+registration + confirming it still starts:
 
 ```bash
 REALM=gravestone_26_1_2   # = data_dir; set per realm
 
-# stop it first so world/ isn't moved out from under a live process
-screen -S "$REALM" -X stuff "save-all
-stop
-"
-sleep 10   # confirm with: screen -list | grep "\.${REALM}"
-
-sudo mkdir -p "/opt/mc/${REALM}"
-
-rsync -a --info=progress2 "/srv/minecraft/${REALM}/" "/opt/mc/${REALM}/"
-# verify counts/sizes match, then:
-rm -rf "/srv/minecraft/${REALM}"
-
-# render start.sh from the template (fills in NAME/PORT; MEM_MIN/MEM_MAX
-# carried over by hand from the original start.sh for this realm)
-# ...then register it in the registry:
 cd /srv/mc
 python -m minecraftmgr server add "$REALM" \
   --name "Gravestone" \
@@ -169,12 +217,14 @@ python -m minecraftmgr server add "$REALM" \
   --type paper \
   --data-dir "$REALM"
 
-# restart from the new location
 cd "/opt/mc/${REALM}"
 screen -dmS "$REALM" ./start.sh
 ```
 
-Repeat for all 9 realms. Set `status` on the 5 that were group-restricted
+Repeat for the 8 populated realms — **skip `gatorland_26_2` for now** (see
+[Capacity](#capacity-checked-aug-2026), it's essentially empty and likely
+mid-setup; confirm its real state before registering it as a normal
+migrated realm). Set `status` on the 5 that were group-restricted
 (`cave_1_20_4`, `cave_1_21_1`, `poop_1_21_1`, `poop_1_21_3`, `river_1_21_1`)
 to `inactive` via `minecraftmgr server update <id> --status inactive` —
 **confirm which are actually retired vs. just currently stopped** before
@@ -184,10 +234,9 @@ setting that; the permission bits are a signal, not a guarantee.
 
 Copy the four still-relevant scripts into `tools/scripts/` in the repo
 (drop `.old` files, `sync.ffs_db`, and the backup script — see below),
-commit via the normal issue/branch/PR flow, then on oscar replace the
-`/srv/minecraft/Scripts/` copies with symlinks (or just delete them once
-`/srv/mc/tools/scripts/` is confirmed working) so there's one copy of the
-truth, reviewed via PR going forward:
+commit via the normal issue/branch/PR flow, then on oscar delete
+`/opt/mc/Scripts/` once `/srv/mc/tools/scripts/` is confirmed working so
+there's one copy of the truth, reviewed via PR going forward:
 
 - `start_all_minecraft_servers.sh`, `stop_all_minecraft_servers.sh` —
   update to loop over `minecraftmgr server list --active-only` instead of
@@ -205,17 +254,23 @@ behavior and 3-backup retention aren't in `minecraftmgr backup` yet — see
 [BAK.md](../epics/BAK.md)'s open work — don't retire it until those gaps
 are either accepted or closed.
 
-### 5. Verify, then decommission
+### 5. Verify, then clean up
 
 - Confirm each migrated realm is reachable and its world loaded correctly
   (not a fresh world — the surest sign a `data_dir` was wrong).
 - Confirm `minecraftmgr backup run --all` produces one archive + `.sha256`
   per active realm under `/mnt/backup/minecraft`.
-- Only after both are confirmed for every realm: nothing should remain
-  under `/srv/minecraft` except the untriaged `logs/`/`readme/` and the
-  shell-history cruft. Rename it (`mv /srv/minecraft /srv/minecraft.pre-migration`)
-  rather than deleting outright, and keep it for a confirmed window before
-  removing it for good.
+- Only after both are confirmed for every realm: `/opt/mc/Scripts/` can go
+  (once [Step 3](#3-port-the-scripts) is confirmed working from
+  `/srv/mc/tools/scripts/`). Triage what's left by hand —
+  `/opt/mc/logs/` and `/opt/mc/readme/` (top-level, distinct from each
+  realm's own `logs/`) get moved into the repo if they're real docs/notes
+  and discarded otherwise; `.bash_history`, `.cache`, `.local` are shell
+  artifacts from `$HOME` having pointed here at some point and can be
+  removed; `lost+found` is a normal ext4 artifact of the filesystem and
+  can stay. There's no separate "old" directory to decommission — the
+  remount in Step 0 means `/opt/mc` *is* the same disk that used to be
+  `/srv/minecraft`, just relabeled.
 
 ## Out of scope (for this migration)
 
