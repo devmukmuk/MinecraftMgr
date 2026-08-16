@@ -92,6 +92,148 @@ Confirm its actual state before running the per-realm steps below against
 it — it may need to skip straight to being scaffolded fresh in the new
 layout instead of migrated.
 
+## Execution log (verified live, Aug 15-16 2026)
+
+Step 0 and a full single-realm migration (`jitterbug_1_21_1`) were run for
+real, end to end, including getting a player connected through a new
+`jitterbug.gamenightbymike.com` subdomain. Several things below deviated
+from the plan as originally written — this section is what actually
+happened, and the sections after it are updated to match.
+
+**The mount flip hit an extra blocker the plan didn't anticipate: a Samba
+share.** `sudo umount /srv/minecraft` failed with "target is busy" even
+after every realm was stopped. `sudo fuser -vm /srv/minecraft` (needs
+`sudo` — a non-root `fuser` silently misses other users' open files)
+showed `smbd` holding it open. `/etc/samba/smb.conf` has a `[Minecraft]`
+share (`path = /srv/minecraft`, `force user = minecraft`) — almost
+certainly the actual way day-to-day file edits happen on this box, not
+git. Fix, run before the `umount`:
+
+```bash
+sudo sed -i 's#path = /srv/minecraft#path = /opt/mc#' /etc/samba/smb.conf
+sudo systemctl restart smbd   # drops active connections, they reconnect transparently
+sudo fuser -vm /srv/minecraft   # confirm empty now
+```
+
+**Editing live realm config now goes through this share, not SSH.** With
+`path = /opt/mc` and `force user = minecraft`, the existing `\\oscar\Minecraft`
+mapped drive is the easiest way to hand-edit a running realm's
+`server.properties` or similar — edits land as the `minecraft` user
+automatically, sidestepping the permission boundary below. (Config changes
+still need a realm restart to take effect; Minecraft reads
+`server.properties` at startup, not continuously.)
+
+**`mike` cannot start or stop realms — only `minecraft` can.** This isn't
+a permissions gap to fix, it's the intended boundary (see
+[Out of scope](#out-of-scope)): the world's `session.lock` and other live
+files are `-rw-r-----`, owned by `minecraft`, group `backup` **read-only**.
+`mike` is in the `backup` group but that only grants read. Attempting
+`./start.sh` as `mike` fails with
+`java.nio.file.AccessDeniedException: ./world/session.lock`. Every
+start/stop in this runbook must run as `minecraft`
+(`sudo -iu minecraft`), not `mike`. `screen -list` is also per-user —
+checking as the wrong user reliably looks like "nothing is running" even
+when it is.
+
+**A stale `latest.log` produced a red herring.** After a crashed start,
+`logs/latest.log` doesn't get overwritten until Log4j initializes far
+enough into startup — a crash before that point (like the permission
+error above) leaves the *previous* run's log untouched. `jitterbug`'s
+`latest.log` was over a year old (`Jul 6 2025`) and several real attempts
+were misdiagnosed against it before checking `ls -la` on the file's mtime
+exposed the problem. Always check the log's timestamp before trusting its
+content as "this run."
+
+**No Velocity proxy actually exists, so every realm needs its own
+port-forward and DNS record — not the shared-port design the runbook
+describes.** See the new [Connectivity](#connectivity-per-realm-dns-port-forward-firewall)
+section below.
+
+## Connectivity per realm: DNS, port-forward, firewall
+
+[oscar-realm-hosting.md](oscar-realm-hosting.md) describes one shared
+port-forward (`25565`) with Velocity routing every realm by hostname, and
+reserves the "own port + `SRV` record" pattern for the modded-realm
+exception. In reality, since Velocity was never deployed (see
+[oscar-realm-hosting.md](oscar-realm-hosting.md)'s note), **every realm
+needs the "exception" pattern** — there's no proxy to do hostname routing,
+so each realm gets its own port, port-forward rule, and DNS record. Three
+things to set up per realm, confirmed by getting `jitterbug` reachable
+live:
+
+**1. AT&T router port-forward** (`NAT/Gaming` page). The existing
+`Minecraft_Arbor_1_21_1` entry was found forwarding port `26005` — which
+is actually gravestone's port, not arbor's (the label went stale when the
+rule was repurposed; forwarding is purely port-based, the label is just
+text). Only one forward existed for all 9 realms, matching the manual
+"forward whichever realm I'm using" workflow this migration is meant to
+replace. Add a new entry per realm under "Application Hosting Entry" →
+"Custom Services" if the realm isn't already in the service dropdown:
+port = the realm's `port` from `servers.json`, protocol `TCP` (Minecraft
+doesn't need UDP), device = `oscar`.
+
+**2. Cloudflare DNS — `A` + `SRV`, not `CNAME`.** `mc.gamenightbymike.com`
+(the base `A` record the runbook assumes already exists) didn't exist at
+all — confirmed via `nslookup` returning `Non-existent domain`. Create it
+once:
+- Type `A`, Name `mc`, Content = oscar's current public IP (check with
+  `curl -s https://api.ipify.org` from oscar), Proxy status **DNS only**
+  (grey cloud — Cloudflare's proxy can't forward raw Minecraft TCP), TTL
+  Auto.
+
+Then per realm, an `SRV` record (Cloudflare's "Add record" UI combines
+service+protocol+name into one field):
+- Type `SRV`, Name `_minecraft._tcp.<realm>`, Priority `0`, Weight `5`,
+  Port = the realm's port, Target `mc.gamenightbymike.com`.
+
+This lets a client connect to `<realm>.gamenightbymike.com` with no port
+typed, same end-user experience the runbook promises via Velocity, just
+achieved per-realm instead of through a shared proxy.
+
+Also worth checking before wiring up a new realm: the DDNS cron job
+described in the runbook (`/opt/ddns/cloudflare-ddns.sh` keeping the `A`
+record in sync with oscar's IP) may not actually be installed, given the
+`A` record itself didn't exist. Confirm it's running before relying on it
+— otherwise `mc.gamenightbymike.com` will silently go stale the next time
+oscar's public IP changes.
+
+**3. `ufw` needs an explicit allow rule per realm's port.** The router
+forward being correct doesn't matter if oscar's own firewall drops the
+packet first — and it will, by default. `sudo ufw status numbered` showed
+existing rules only for ports `26005` and `26010` (both realms that
+already had connectivity set up); nothing else. A ~20-second "Connecting
+to the server..." timeout in the Minecraft client (not an instant
+refusal) is the signature of this — the connection isn't being rejected,
+it's being silently dropped before it reaches anything. Add the rule,
+matching the existing comment style:
+
+```bash
+sudo ufw allow <port>/tcp comment 'Minecraft server port <port> (<realm>)'
+```
+
+No realm restart needed for a `ufw` change — it filters at the firewall
+level before packets reach the process, so it takes effect immediately
+for new connections.
+
+**IPv6 is also a real, separate problem, independent of all of the
+above.** Oscar's outbound IPv6 to the internet is broken —
+`curl -6 https://api.minecraftservices.com/publickeys` fails outright
+(`curl: (7)`), while `curl -4` to the same URL succeeds cleanly. DNS
+returns IPv6 addresses first for Mojang's domains, and the JVM prefers
+IPv6 when both are offered, so a plain `java -jar server.jar` silently
+fails its Yggdrasil key fetch (`Failed to request yggdrasil public key`,
+manifesting as a Gson parse error over what's actually a broken/WAF-like
+response) — a failure that looks like a Mojang-side or network block but
+is actually oscar's own IPv6 path. Fix: force IPv4 in every realm's
+`start.sh`:
+
+```bash
+java -Djava.net.preferIPv4Stack=true -Xms$MEM_MIN -Xmx$MEM_MAX -jar "$JAR" nogui --port $PORT
+```
+
+This needs to be in the [`start.sh` template](#templating-startsh) below,
+not just patched per-realm as issues come up.
+
 ## Target layout
 
 ```
@@ -143,6 +285,14 @@ them as manually-set values in the rendered `/opt/mc/<data_dir>/start.sh`
 (don't regenerate over hand-tuned memory settings without a real field to
 drive it — see [Out of scope](#out-of-scope)).
 
+The template's `java` invocation also needs
+`-Djava.net.preferIPv4Stack=true` (confirmed necessary live — see
+[Execution log](#execution-log-verified-live-aug-15-16-2026)):
+
+```bash
+java -Djava.net.preferIPv4Stack=true -Xms$MEM_MIN -Xmx$MEM_MAX -jar "$JAR" nogui --port $PORT
+```
+
 ## Execution runbook
 
 ### 0. Repoint `/opt/mc` at the spacious disk
@@ -180,6 +330,7 @@ on root:
 
 ```bash
 sudo mkdir -p /srv/mc
+sudo chown mike:mike /srv/mc
 cd /srv/mc
 git clone https://github.com/devmukmuk/MinecraftMgr.git .
 tools/git-hooks/install.sh
@@ -190,7 +341,21 @@ paths:
   data_root: /opt/mc
   backups_root: /mnt/backup/minecraft
 EOF
+
+python3 -m venv .venv
+.venv/bin/pip install -e .
+.venv/bin/python -m minecraftmgr about   # sanity check
 ```
+
+This checkout was cloned over plain HTTPS with no stored credentials —
+fine for `git pull`, but it means **oscar cannot `git push`**
+(confirmed: `remote: Permission ... denied`, `403`). Anything that
+mutates `servers.json` on oscar (like Step 2's `server add` below) has to
+get committed from a checkout that *can* push — either give oscar real
+push credentials (a fine-grained PAT or deploy key) or treat "run
+registry-mutating commands only from the dev box, oscar is pull-only" as
+the actual rule. Not resolved yet — see [DEP.md](../epics/DEP.md)'s open
+work.
 
 ### 1. Rename the shared jar cache
 
@@ -203,23 +368,41 @@ mv /opt/mc/templates /opt/mc/_jarcache
 ### 2. Register each realm (repeat per realm)
 
 No data movement needed — each realm's files are already sitting at the
-right path (`/opt/mc/<data_dir>/`) after the remount. This step is just
-registration + confirming it still starts:
+right path (`/opt/mc/<data_dir>/`) after the remount. Registration runs
+as `mike` (`/srv/mc` is `mike`-owned); starting the realm must run as
+`minecraft` (see [Execution log](#execution-log-verified-live-aug-15-16-2026)
+— `mike` gets `AccessDeniedException` on the world's lock file):
 
 ```bash
 REALM=gravestone_26_1_2   # = data_dir; set per realm
 
 cd /srv/mc
-python -m minecraftmgr server add "$REALM" \
+.venv/bin/python -m minecraftmgr server add "$REALM" \
   --name "Gravestone" \
   --port 26005 \
   --mc-version "26.1.2" \
   --type paper \
   --data-dir "$REALM"
 
+# commit + push from a checkout that can actually push (see Step 0's note)
+
+sudo -iu minecraft
 cd "/opt/mc/${REALM}"
 screen -dmS "$REALM" ./start.sh
+exit
 ```
+
+Add the template's `-Djava.net.preferIPv4Stack=true` flag to this realm's
+`start.sh` before starting it if it hasn't been added yet (see
+[Templating start.sh](#templating-startsh)) — otherwise Mojang session
+verification will fail even though the server itself is fine.
+
+**Then wire up connectivity** — port-forward, `SRV` record, `ufw` rule —
+per [Connectivity per realm](#connectivity-per-realm-dns-port-forward-firewall)
+above. None of that is optional per realm; skipping any one of the three
+produces a working-looking server that's unreachable from outside oscar's
+LAN (or, for the `ufw` step specifically, a client that hangs on
+"Connecting to the server..." for ~20 seconds before failing).
 
 Repeat for the 8 populated realms — **skip `gatorland_26_2` for now** (see
 [Capacity](#capacity-checked-aug-2026), it's essentially empty and likely
