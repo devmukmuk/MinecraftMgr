@@ -37,8 +37,13 @@ def _find_server_jar(realm_dir: Path) -> Path | None:
     return candidates[0] if candidates else None
 
 
-def _read_main_class(jar_path: Path) -> str | None:
-    """Read the Main-Class attribute out of a jar's manifest, if readable."""
+def read_jar_main_class(jar_path: Path) -> str | None:
+    """Read the Main-Class attribute out of a jar's manifest, if readable.
+
+    Public: reused by jar_cache_service to verify a cached jar is actually
+    Paper before provision trusts it, not just this module's own realm
+    folder inspection.
+    """
 
     try:
         with zipfile.ZipFile(jar_path) as archive:
@@ -53,7 +58,7 @@ def _read_main_class(jar_path: Path) -> str | None:
     return None
 
 
-def _classify_main_class(main_class: str | None) -> str:
+def classify_main_class(main_class: str | None) -> str:
     """Map a jar's Main-Class to a best-effort server_type, or 'unknown'."""
 
     if main_class is None:
@@ -66,6 +71,12 @@ def _classify_main_class(main_class: str | None) -> str:
             return server_type
 
     return "unknown"
+
+
+def classify_jar(jar_path: Path) -> str:
+    """Classify a jar file's engine type directly from its manifest."""
+
+    return classify_main_class(read_jar_main_class(jar_path))
 
 
 def _read_online_mode(properties_path: Path) -> bool:
@@ -106,8 +117,8 @@ def inspect_realm_dir(realm_dir: Path) -> RealmInspection:
     if jar_path is None:
         notes.append("No server_*.jar found in the realm directory.")
 
-    main_class = _read_main_class(jar_path) if jar_path is not None else None
-    detected_server_type = _classify_main_class(main_class)
+    main_class = read_jar_main_class(jar_path) if jar_path is not None else None
+    detected_server_type = classify_main_class(main_class)
 
     if has_mods_dir and detected_server_type != "fabric":
         notes.append(
