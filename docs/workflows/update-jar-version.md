@@ -1,5 +1,9 @@
 # Update a realm's jar (Minecraft/Paper version)
 
+> See [PAPER.md](../PAPER.md) for what Paper actually is (not vanilla — a
+> different server implementation entirely) and where to get a verified
+> build; this doc assumes you already have one.
+
 **Automation status:** None — proposed as future work in
 [PROV-design.md](../epics/PROV-design.md#future-work-modifying-an-already-active-realm).
 `ensure_jar_cached()` (with its Paper-manifest validation) and `stop_realm()`

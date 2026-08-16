@@ -13,6 +13,11 @@ place.
 
 `docs/` is split by what kind of question the reader has, not by epic:
 
+- **`docs/PAPER.md`** — Paper vs. vanilla explainer plus the three
+  jar-lifecycle workflows (where to get one, deploy, upgrade). Sits at the
+  top level rather than under `architecture/`, `design/`, or `workflows/`
+  since it's background knowledge those all lean on, not a fit for any one
+  of them.
 - **`docs/architecture/`** — how the deployed system is put together and
   operated: [oscar-realm-hosting.md](../architecture/oscar-realm-hosting.md)
   (proxy/DNS/systemd/firewall runbook, owned in spirit by [DEP](DEP.md))
