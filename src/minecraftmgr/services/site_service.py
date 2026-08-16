@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from minecraftmgr.constants import REALM_DOMAIN
+from minecraftmgr.constants import REALM_DOMAIN, TRIGGER_URL
 from minecraftmgr.models.server_entry import ServerEntry
 
 _STATUS_LABELS = {
@@ -252,6 +252,36 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
 
   .copy-btn[data-copied="true"] {{ background: var(--good); color: #fff; }}
 
+  .live-row {{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+  }}
+
+  .live-row[hidden] {{ display: none; }}
+
+  .live-status {{ color: var(--ink-dim); }}
+  .live-status[data-state="running"] {{ color: var(--good); font-weight: 600; }}
+
+  .autostart-btn {{
+    font-family: inherit;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--ink);
+    background: transparent;
+    border: 1px solid var(--accent);
+    border-radius: 5px;
+    padding: 0.3rem 0.55rem;
+    cursor: pointer;
+  }}
+
+  .autostart-btn[hidden] {{ display: none; }}
+  .autostart-btn:disabled {{ opacity: 0.6; cursor: default; }}
+
   details.howto summary {{
     cursor: pointer;
     font-size: 0.82rem;
@@ -345,6 +375,56 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
       }}
     }});
   }});
+
+  var TRIGGER_URL = "{trigger_url}";
+
+  function refreshStatus() {{
+    fetch(TRIGGER_URL + "/status").then(function (res) {{
+      if (!res.ok) {{ throw new Error("bad status"); }}
+      return res.json();
+    }}).then(function (statuses) {{
+      document.querySelectorAll(".live-row").forEach(function (row) {{
+        var realm = row.getAttribute("data-realm");
+        var state = statuses[realm];
+        if (!state) {{ return; }}
+        row.hidden = false;
+        var label = row.querySelector(".live-status");
+        var btn = row.querySelector(".autostart-btn");
+        label.textContent = state === "running" ? "Running" : "Stopped";
+        label.setAttribute("data-state", state);
+        btn.hidden = state !== "stopped";
+      }});
+    }}).catch(function () {{
+      // Trigger daemon not reachable -- picker stays fully usable without it.
+    }});
+  }}
+
+  document.querySelectorAll(".autostart-btn").forEach(function (btn) {{
+    btn.addEventListener("click", function () {{
+      var realm = btn.getAttribute("data-realm");
+      var pin = window.prompt("Family PIN to start " + realm + ":");
+      if (!pin) {{ return; }}
+
+      btn.disabled = true;
+      btn.textContent = "Starting\\u2026";
+
+      fetch(TRIGGER_URL + "/start/" + realm, {{
+        method: "POST",
+        headers: {{ "X-Autostart-Pin": pin }}
+      }}).then(function (res) {{
+        if (res.status === 403) {{ window.alert("Wrong PIN."); return; }}
+        if (!res.ok) {{ window.alert("Could not start it \\u2014 try again in a bit."); return; }}
+        setTimeout(refreshStatus, 15000);
+      }}).catch(function () {{
+        window.alert("Could not reach the server.");
+      }}).finally(function () {{
+        btn.disabled = false;
+        btn.textContent = "Autostart";
+      }});
+    }});
+  }});
+
+  refreshStatus();
 </script>
 """
 
@@ -368,6 +448,10 @@ _CARD_TEMPLATE = """      <article class="card">
             <li>Paste the address above. Leave the port blank.</li>
           </ol>
         </details>
+        <div class="live-row" data-realm="{server_id}" hidden>
+          <span class="live-status">Checking&hellip;</span>
+          <button class="autostart-btn" data-realm="{server_id}" hidden>Autostart</button>
+        </div>
       </article>"""
 
 
@@ -381,6 +465,7 @@ def _render_card(server: ServerEntry) -> str:
     status_class, status_label = _STATUS_LABELS.get(server.status, ("inactive", server.status.title()))
 
     return _CARD_TEMPLATE.format(
+        server_id=server.server_id,
         name=server.name,
         version=server.minecraft_version,
         server_type=server.server_type.title(),
@@ -395,7 +480,7 @@ def render_site(servers: list[ServerEntry]) -> str:
 
     cards = "\n".join(_render_card(server) for server in servers)
 
-    return _PAGE_TEMPLATE.format(domain=REALM_DOMAIN, cards=cards)
+    return _PAGE_TEMPLATE.format(domain=REALM_DOMAIN, trigger_url=TRIGGER_URL, cards=cards)
 
 
 def build_site(servers: list[ServerEntry], output_path: Path) -> Path:
