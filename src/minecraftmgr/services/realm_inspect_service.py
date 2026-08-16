@@ -152,6 +152,6 @@ def require_velocity_compatible(inspection: RealmInspection) -> None:
         raise IncompatibleRealmError(
             f"'{inspection.data_dir}' was detected as '{inspection.detected_server_type}', "
             "not Paper -- Velocity's modern forwarding only works with Paper/Spigot-family "
-            "servers. This needs a manual conversion (drop mods if Fabric, see the gravestone "
-            "conversion in oscar-migration-plan.md), not automatic activation."
+            "servers. This needs a manual conversion, not automatic activation -- see "
+            "docs/workflows/convert-engine.md."
         )

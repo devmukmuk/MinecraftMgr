@@ -275,6 +275,12 @@ tradeoff, not a side effect.
 
 ### Converting both realms to Paper
 
+> The steps below are the real, one-time execution log for these two
+> specific realms. The same process, generalized into a repeatable runbook,
+> lives at [convert-engine.md](../workflows/convert-engine.md) — use that
+> for converting any other realm; keep reading here for the narrative and
+> the gotchas actually hit doing it live.
+
 Paper jars came from PaperMC's current Fill API
 (`fill.papermc.io/v3/projects/...`) — the old `api.papermc.io/v2`
 endpoint referenced in [oscar-realm-hosting.md](oscar-realm-hosting.md)
