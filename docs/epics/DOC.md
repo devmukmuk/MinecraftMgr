@@ -23,6 +23,12 @@ place.
   [servers-json-schema.md](../design/servers-json-schema.md) for the
   [REG](REG.md) registry format. Intended for anyone hand-editing
   `servers.json` or writing code against `ServerEntry`.
+- **`docs/workflows/`** — runbooks for changing an *already-active* realm
+  (rename, port change, backup/restore, jar update, whitelist/ops, delete),
+  as opposed to creating one ([PROV](PROV-design.md)). Each doc states
+  whether the workflow is automated yet, so it also doubles as the backlog
+  for [PROV](PROV-design.md)'s "Future work" section — see
+  [workflows/README.md](../workflows/README.md).
 - **`docs/epics/`** (this folder) — one design doc per epic code in
   `config/git/epics.txt`, plus [README.md](README.md) which is the
   authoritative epic-code table and the commit/branch-naming convention
