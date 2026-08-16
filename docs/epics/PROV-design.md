@@ -157,7 +157,8 @@ feature.
   confirm prompt or mutation. Gets **no** override flag for a positive
   Fabric/vanilla detection — matches the "must not auto-convert" rule; it
   reports what was detected and stops, deferring to the same manual/guided
-  conversion process used for `gravestone`.
+  conversion process used for `gravestone` — written up as a runbook in
+  [convert-engine.md](../workflows/convert-engine.md).
 
 ## Explicitly out of scope for this epic
 

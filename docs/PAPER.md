@@ -50,6 +50,11 @@ detected as Paper — real incident: `jitterbug` was recorded as `paper` in
 until Velocity forwarding was attempted, because a direct-connect player
 can't tell the difference either.
 
+Have a realm that turned out to be vanilla, Fabric, or Forge and want it
+Velocity-compatible? See [convert-engine.md](workflows/convert-engine.md) —
+this is a one-way, manual/guided process by design, not something
+`realm activate` will do for you automatically.
+
 ## Known gameplay differences: redstone and farms
 
 Reddit complaints about Paper breaking big redstone builds or automatic
