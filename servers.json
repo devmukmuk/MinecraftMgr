@@ -1,0 +1,13 @@
+{
+  "jitterbug": {
+    "name": "Jitterbug",
+    "status": "inactive",
+    "port": 26887,
+    "minecraft_version": "1.21.1",
+    "server_type": "paper",
+    "jar_source": "",
+    "data_dir": "jitterbug_1_21_1",
+    "created": "2026-08-16T01:33:47.768092+00:00",
+    "notes": "not an active realm"
+  }
+}
