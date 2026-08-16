@@ -20,5 +20,16 @@
     "data_dir": "jitterbug_1_21_1",
     "created": "2026-08-16T01:33:47.768092+00:00",
     "notes": "not an active realm; was actually running vanilla despite this field, converted to real Paper 2026-08-16, now behind Velocity"
+  },
+  "testrealm": {
+    "name": "Test Realm",
+    "status": "inactive",
+    "port": 26099,
+    "minecraft_version": "26.2",
+    "server_type": "paper",
+    "jar_source": "",
+    "data_dir": "testrealm",
+    "created": "2026-08-16T18:50:02.007111+00:00",
+    "notes": "Throwaway realm created to validate the PROV provisioning feature end-to-end (2026-08-16). Not an active realm."
   }
 }
