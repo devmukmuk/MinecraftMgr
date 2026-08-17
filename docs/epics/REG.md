@@ -44,10 +44,22 @@ else (backups, deploys) looks realms up here rather than scanning
   only prints a subset of fields (no `jar_source`, `data_dir`, `notes`,
   `created` in the table).
 - No validation that `port` is unique across entries, or that `data_dir`
-  doesn't collide with another realm's. Matters more than it sounds: two
-  real collisions already exist among realms not even in the registry yet
-  (`poop_1_21_1`/`poop_1_21_3` both on `28314`, `arbor_1_21_10` reusing
-  `gravestone`'s `26005`) — a `servers.json`-only uniqueness check wouldn't
-  have caught either. See [PROV-design.md](PROV-design.md)'s "Future work"
-  section for a proposed `realm audit-ports` command that scans actual
-  realm folders instead.
+  doesn't collide with another realm's. Matters more than it sounds: a real
+  collision confirmed live on oscar (2026-08-16) — `poop_1_21_1` and
+  `poop_1_21_3` both actually bind `26111` — came from realms not even in
+  the registry yet, so a `servers.json`-only uniqueness check wouldn't have
+  caught it. (`arbor_1_21_10` really was also reusing `gravestone`'s `26005`
+  at the time this was first found, confirmed via its `start.sh`; it's since
+  been moved to `26124` by hand, unrelated to any tooling here.) See
+  [PROV-design.md](PROV-design.md)'s "Future work" section for a proposed
+  `realm audit-ports` command that scans actual realm folders instead.
+- **`server.properties`'s `server-port` isn't reliable on its own** — every
+  realm's `start.sh` except `cave_1_20_4`'s (which has no `start.sh` at all)
+  passes an explicit `--port $PORT` on the command line, which wins over
+  whatever `server.properties` says. `poop_1_21_1`/`poop_1_21_3` show this
+  clearly: `server.properties` says `28314` for both, but the real, live,
+  actually-colliding port for both is `26111` from `start.sh`. Any future
+  port-auditing tool (registry-based or the proposed `realm audit-ports`)
+  has to read both `server.properties` *and* grep each realm's `start.sh`
+  for a `--port` override, or it will report ports that were never
+  actually live.

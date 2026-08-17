@@ -188,9 +188,19 @@ just the page's own status report.
   CLI flags with defaults, doesn't persist them to `servers.json`.
 - No port-uniqueness validation against other registered realms yet (same
   gap `REG.md` already flags for `server add`) — see "Future work" below,
-  this turned out to matter: two real collisions already exist among the
-  unregistered sitting realms (`poop_1_21_1`/`poop_1_21_3` both on `28314`;
-  `arbor_1_21_10` on `26005`, the same port `gravestone` uses).
+  this turned out to matter: a real collision exists among the unregistered
+  sitting realms, `poop_1_21_1`/`poop_1_21_3` both actually binding `26111`
+  (their `server.properties` both claim `28314`, but each realm's `start.sh`
+  passes a `--port` override that wins over that — see the next bullet).
+  `arbor_1_21_10` was also found reusing `gravestone`'s `26005` at first,
+  but has since been moved to `26124` by hand.
+- **`server.properties`'s `server-port` isn't trustworthy on its own** —
+  confirmed live auditing the sitting realms: every `start.sh` except
+  `cave_1_20_4`'s (which has no `start.sh` at all) passes an explicit
+  `--port $PORT` on the command line, which overrides `server.properties`
+  at boot. Any port check — including the proposed `realm audit-ports`
+  below — has to read both files, or it reports ports that were never
+  actually live.
 
 ## Future work: modifying an already-active realm
 
@@ -230,15 +240,18 @@ for automating each one, not yet built:
   `server.properties`/`start.sh`, then prints the `velocity.toml` diff and a
   reminder that both the realm and Velocity need restarting — it should
   never touch `velocity.toml` directly, same reasoning as `provision`.
-- **Port-uniqueness audit**: the two real collisions found this session
-  (`poop_1_21_1`/`poop_1_21_3` sharing `28314`; `arbor_1_21_10` reusing
-  `gravestone`'s `26005`) came from *unregistered* realms' `server.properties`
-  files, not from `servers.json` — so a useful check can't just validate
-  `servers.json` entries against each other (that's a narrower, separate fix
-  worth doing in `REG` regardless). A `minecraftmgr realm audit-ports`
-  command that runs `inspect`-style port discovery across every folder in
-  `data_root`, registered or not, would catch what a registry-only check
-  can't.
+- **Port-uniqueness audit**: the real collision found this session
+  (`poop_1_21_1`/`poop_1_21_3`, both actually live on `26111`) came from
+  *unregistered* realms, not from `servers.json` — so a useful check can't
+  just validate `servers.json` entries against each other (that's a
+  narrower, separate fix worth doing in `REG` regardless). It also can't
+  just read `server.properties`, per the note above — `poop_1_21_1`'s and
+  `poop_1_21_3`'s both claim `28314` there, a number neither of them
+  actually binds. A `minecraftmgr realm audit-ports` command needs to run
+  `inspect`-style discovery across every folder in `data_root` (registered
+  or not) *and* check each realm's `start.sh` for a `--port` override
+  before trusting `server.properties`, to catch what a registry-only or
+  properties-only check can't.
 - **Seed**: not a live-modification concern — a world's seed only affects
   chunks that don't exist yet, so "changing" the seed of a realm with an
   already-generated world means starting over with a blank world, not
