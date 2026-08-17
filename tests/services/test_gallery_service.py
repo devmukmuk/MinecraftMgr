@@ -69,8 +69,16 @@ def test_render_gallery_footer_links_the_shared_logo_and_copyright() -> None:
 
     html = render_gallery([])
 
-    assert '<img class="footer-logo" src="https://minecraft.gamenightbymike.com/logo.png"' in html
+    assert '<img class="footer-logo" src="https://minecraft.gamenightbymike.com/logo.png?v=1"' in html
     assert "&copy; 2026 Game Night by Mike." in html
+
+
+def test_render_gallery_disables_browser_caching_of_the_page() -> None:
+    """The gallery ships no-cache meta tags so a rebuilt manifest isn't hidden behind a stale cache."""
+
+    html = render_gallery([])
+
+    assert '<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">' in html
 
 
 def test_render_gallery_empty_manifest_still_renders_shell() -> None:

@@ -77,8 +77,16 @@ def test_render_site_footer_shows_the_logo_and_copyright() -> None:
 
     html = render_site([])
 
-    assert '<img class="footer-logo" src="logo.png"' in html
+    assert '<img class="footer-logo" src="logo.png?v=1"' in html
     assert "&copy; 2026 Game Night by Mike." in html
+
+
+def test_render_site_disables_browser_caching_of_the_page() -> None:
+    """The page ships no-cache meta tags so a rebuild isn't hidden behind a stale cache."""
+
+    html = render_site([])
+
+    assert '<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">' in html
 
 
 def test_render_site_empty_registry_still_renders_shell() -> None:

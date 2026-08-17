@@ -7,3 +7,4 @@ SCREENSHOTS_URL = f"https://shots.{REALM_DOMAIN}/report/"
 
 COMPANY_NAME = "Game Night by Mike"
 COMPANY_YEAR = 2026
+LOGO_VERSION = 1
