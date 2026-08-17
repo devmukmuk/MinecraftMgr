@@ -28,13 +28,54 @@ class IncompatibleRealmError(Exception):
 
 
 def _find_server_jar(realm_dir: Path) -> Path | None:
-    """Return the most recently modified server_*.jar, or None if none exist."""
+    """Return the most recently modified server_*.jar, or None if none exist.
+
+    Fallback only -- old realm folders can accumulate jars from other
+    versions/realms (backups, copy-paste leftovers) that happen to be newer
+    than the one actually in use. Prefer `_read_start_sh_jar()`, which reads
+    what start.sh really launches, wherever start.sh exists.
+    """
 
     candidates = sorted(
         realm_dir.glob("server_*.jar"), key=lambda path: path.stat().st_mtime, reverse=True
     )
 
     return candidates[0] if candidates else None
+
+
+def _read_start_sh_jar(start_sh_path: Path, realm_dir: Path) -> Path | None:
+    """Resolve the exact jar start.sh actually launches, if determinable.
+
+    _find_server_jar()'s mtime-based glob picks whichever server_*.jar was
+    modified most recently in the folder, which is not necessarily the one
+    start.sh references -- confirmed live: poop_1_21_1's start.sh launches
+    server_poop_1_21_1.jar (Aug 2024), but a newer, unrelated
+    server_poop_1_21_3.jar (May 2025) left sitting in the same folder was
+    what the glob heuristic picked instead, silently misreporting the
+    realm's real engine type.
+    """
+
+    if not start_sh_path.exists():
+        return None
+
+    name: str | None = None
+    jar_expr: str | None = None
+
+    for line in start_sh_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("NAME="):
+            name = stripped.split("=", 1)[1].strip().strip("\"'")
+        elif stripped.startswith("JAR="):
+            jar_expr = stripped.split("=", 1)[1].strip().strip("\"'")
+
+    if jar_expr is None:
+        return None
+
+    if name is not None:
+        jar_expr = jar_expr.replace("${NAME}", name).replace("$NAME", name)
+
+    candidate = realm_dir / jar_expr
+    return candidate if candidate.exists() else None
 
 
 def read_jar_main_class(jar_path: Path) -> str | None:
@@ -135,7 +176,20 @@ def inspect_realm_dir(realm_dir: Path) -> RealmInspection:
 
     has_mods_dir = (realm_dir / "mods").is_dir()
 
-    jar_path = _find_server_jar(realm_dir)
+    glob_jar_path = _find_server_jar(realm_dir)
+    start_sh_jar_path = _read_start_sh_jar(realm_dir / "start.sh", realm_dir)
+
+    if start_sh_jar_path is not None:
+        jar_path = start_sh_jar_path
+        if glob_jar_path is not None and glob_jar_path != start_sh_jar_path:
+            notes.append(
+                f"start.sh actually launches {start_sh_jar_path.name}, but "
+                f"{glob_jar_path.name} is the most recently modified server_*.jar in this "
+                f"folder -- reporting {start_sh_jar_path.name} as the real jar."
+            )
+    else:
+        jar_path = glob_jar_path
+
     if jar_path is None:
         notes.append("No server_*.jar found in the realm directory.")
 

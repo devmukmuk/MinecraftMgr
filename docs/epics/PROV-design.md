@@ -200,7 +200,19 @@ just the page's own status report.
   `--port $PORT` on the command line, which overrides `server.properties`
   at boot. Any port check — including the proposed `realm audit-ports`
   below — has to read both files, or it reports ports that were never
-  actually live.
+  actually live. **Fixed** in `inspect_realm_dir()` (issue #49): it now
+  reads `start.sh`'s `PORT=` and prefers it, noting the discrepancy when
+  the two disagree.
+- **The most-recently-modified `server_*.jar` in a folder isn't
+  necessarily the one that's actually running, either** — the same class
+  of bug as the port one above, found auditing `poop_1_21_1`: its
+  `start.sh` launches `server_poop_1_21_1.jar` (Aug 2024), but a newer,
+  unrelated `server_poop_1_21_3.jar` (May 2025) left sitting in the same
+  folder was what `_find_server_jar()`'s mtime-glob picked instead —
+  silently misreporting the realm's real engine type. **Fixed** alongside
+  the port issue: `inspect_realm_dir()` now prefers the jar `start.sh`
+  actually references (parsing its `NAME=`/`JAR=` assignments), falling
+  back to the mtime-glob heuristic only when there's no `start.sh` at all.
 
 ## Future work: modifying an already-active realm
 
