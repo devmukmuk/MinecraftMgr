@@ -120,6 +120,51 @@ def test_reads_online_mode_and_port_from_server_properties(tmp_path: Path) -> No
     assert inspection.current_port == 26010
 
 
+def test_start_sh_port_override_wins_over_server_properties(tmp_path: Path) -> None:
+    """start.sh's PORT= wins at boot over server.properties -- confirmed live on oscar,
+    where poop_1_21_1/poop_1_21_3 both claim 28314 in server.properties but actually
+    collide at 26111, the value their start.sh scripts really pass via --port."""
+
+    realm_dir = tmp_path / "poop_1_21_1"
+    realm_dir.mkdir()
+    (realm_dir / "server.properties").write_text("server-port=28314\n", encoding="utf-8")
+    (realm_dir / "start.sh").write_text(
+        '#!/bin/bash\nPORT=26111\njava -jar server.jar nogui --port $PORT\n', encoding="utf-8"
+    )
+
+    inspection = inspect_realm_dir(realm_dir)
+
+    assert inspection.current_port == 26111
+    assert any("start.sh passes --port 26111" in note for note in inspection.notes)
+
+
+def test_server_properties_port_used_when_no_start_sh(tmp_path: Path) -> None:
+    """No start.sh at all (e.g. cave_1_20_4) falls back to server.properties, no note."""
+
+    realm_dir = tmp_path / "cave_1_20_4"
+    realm_dir.mkdir()
+    (realm_dir / "server.properties").write_text("server-port=26912\n", encoding="utf-8")
+
+    inspection = inspect_realm_dir(realm_dir)
+
+    assert inspection.current_port == 26912
+    assert not any("start.sh" in note for note in inspection.notes)
+
+
+def test_no_note_when_start_sh_port_agrees_with_server_properties(tmp_path: Path) -> None:
+    """No spurious note when both files already agree."""
+
+    realm_dir = tmp_path / "gravestone_26_1_2"
+    realm_dir.mkdir()
+    (realm_dir / "server.properties").write_text("server-port=26005\n", encoding="utf-8")
+    (realm_dir / "start.sh").write_text("PORT=26005\n", encoding="utf-8")
+
+    inspection = inspect_realm_dir(realm_dir)
+
+    assert inspection.current_port == 26005
+    assert not any("start.sh" in note for note in inspection.notes)
+
+
 def test_has_paper_global_yml_detected(tmp_path: Path) -> None:
     """config/paper-global.yml presence is reported (only exists after a first boot)."""
 
