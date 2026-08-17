@@ -183,6 +183,83 @@ _PAGE_TEMPLATE = """<title>Screenshot Gallery &mdash; Game Night by Mike</title>
     color: var(--ink-dim);
     padding: 2rem 0;
   }}
+
+  .card-img-btn {{
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+  }}
+
+  .card-img-btn:focus-visible {{
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }}
+
+  .lightbox {{
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 8, 4, 0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }}
+
+  .lightbox[hidden] {{ display: none; }}
+
+  .lightbox img {{
+    max-width: 90vw;
+    max-height: 86vh;
+    object-fit: contain;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  }}
+
+  .lightbox-caption {{
+    position: absolute;
+    bottom: 1.5rem;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: #fff8ec;
+    font-size: 0.82rem;
+    font-family: 'Cascadia Code', 'Consolas', 'SFMono-Regular', Menlo, monospace;
+  }}
+
+  .lightbox-btn {{
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 4rem;
+    border: none;
+    background: none;
+    color: #fff8ec;
+    font-size: 2.2rem;
+    cursor: pointer;
+    opacity: 0.75;
+  }}
+
+  .lightbox-btn:hover, .lightbox-btn:focus-visible {{ opacity: 1; }}
+
+  .lightbox-prev {{ left: 0; }}
+  .lightbox-next {{ right: 0; }}
+
+  .lightbox-close {{
+    position: absolute;
+    top: 0.75rem;
+    right: 1rem;
+    border: none;
+    background: none;
+    color: #fff8ec;
+    font-size: 2rem;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.85;
+  }}
+
+  .lightbox-close:hover, .lightbox-close:focus-visible {{ opacity: 1; }}
 </style>
 
 <div class="layout">
@@ -209,6 +286,14 @@ _PAGE_TEMPLATE = """<title>Screenshot Gallery &mdash; Game Night by Mike</title>
     </div>
     <p class="empty-state" id="empty-state" hidden>No screenshots match the current filters.</p>
   </main>
+</div>
+
+<div class="lightbox" id="lightbox" hidden>
+  <button class="lightbox-btn lightbox-prev" id="lightbox-prev" aria-label="Previous screenshot">&lsaquo;</button>
+  <img id="lightbox-img" src="" alt="">
+  <button class="lightbox-btn lightbox-next" id="lightbox-next" aria-label="Next screenshot">&rsaquo;</button>
+  <button class="lightbox-close" id="lightbox-close" aria-label="Close">&times;</button>
+  <p class="lightbox-caption" id="lightbox-caption"></p>
 </div>
 
 <script>
@@ -248,6 +333,57 @@ _PAGE_TEMPLATE = """<title>Screenshot Gallery &mdash; Game Night by Mike</title>
   }});
 
   applyFilters();
+
+  var lightbox = document.getElementById('lightbox');
+  var lightboxImg = document.getElementById('lightbox-img');
+  var lightboxCaption = document.getElementById('lightbox-caption');
+
+  function visibleCards() {{
+    return cards.filter(function (card) {{ return !card.hidden; }});
+  }}
+
+  function openLightbox(card) {{
+    var btn = card.querySelector('.card-img-btn');
+    lightboxImg.src = btn.getAttribute('data-full');
+    lightboxImg.alt = btn.getAttribute('data-filename');
+    lightboxCaption.textContent = card.querySelector('.card-realm').textContent
+      + ' · ' + card.querySelector('.card-sub').textContent;
+    lightbox.hidden = false;
+    lightbox.setAttribute('data-current', String(visibleCards().indexOf(card)));
+  }}
+
+  function closeLightbox() {{
+    lightbox.hidden = true;
+    lightboxImg.src = '';
+  }}
+
+  function showByOffset(offset) {{
+    var shown = visibleCards();
+    if (shown.length === 0) {{ return; }}
+    var current = parseInt(lightbox.getAttribute('data-current'), 10) || 0;
+    var next = (current + offset + shown.length) % shown.length;
+    openLightbox(shown[next]);
+  }}
+
+  cards.forEach(function (card) {{
+    var btn = card.querySelector('.card-img-btn');
+    btn.addEventListener('click', function () {{ openLightbox(card); }});
+  }});
+
+  document.getElementById('lightbox-close').addEventListener('click', closeLightbox);
+  document.getElementById('lightbox-prev').addEventListener('click', function () {{ showByOffset(-1); }});
+  document.getElementById('lightbox-next').addEventListener('click', function () {{ showByOffset(1); }});
+
+  lightbox.addEventListener('click', function (event) {{
+    if (event.target === lightbox) {{ closeLightbox(); }}
+  }});
+
+  document.addEventListener('keydown', function (event) {{
+    if (lightbox.hidden) {{ return; }}
+    if (event.key === 'Escape') {{ closeLightbox(); }}
+    if (event.key === 'ArrowLeft') {{ showByOffset(-1); }}
+    if (event.key === 'ArrowRight') {{ showByOffset(1); }}
+  }});
 </script>
 """
 
@@ -257,7 +393,9 @@ _CHECKBOX_TEMPLATE = (
 )
 
 _CARD_TEMPLATE = """      <article class="card" data-realm="{realm}" data-version="{version}">
-        <img src="../{relative_path}" alt="{filename}" loading="lazy">
+        <button class="card-img-btn" data-full="../{relative_path}" data-filename="{filename}">
+          <img src="../{relative_path}" alt="{filename}" loading="lazy">
+        </button>
         <div class="card-meta">
           <span class="card-realm">{realm_label}</span>
           <span class="card-sub">{version_label} &middot; {taken_label}</span>
