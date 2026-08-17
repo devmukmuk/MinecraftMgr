@@ -319,15 +319,36 @@
     margin-top: 3rem;
     padding-top: 1.2rem;
     border-top: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    text-align: center;
+  }
+
+  .footer-build-note {
     font-size: 0.78rem;
     color: var(--ink-dim);
+  }
+
+  .footer-logo {
+    display: block;
+    max-height: 32px;
+    width: auto;
+  }
+
+  .footer-copyright {
+    max-width: 40ch;
+    font-size: 0.72rem;
+    color: var(--ink-dim);
+    opacity: 0.75;
   }
 </style>
 
 <div class="wrap">
 
   <header class="hero">
-    <span class="eyebrow">mc.gamenightbymike.com</span>
+    <span class="eyebrow">minecraft.gamenightbymike.com</span>
     <h1>Game Night by Mike</h1>
     <p class="tagline">Pick a realm, copy its address, paste it into the Minecraft launcher. No ports, nothing to install.</p>
   </header>
@@ -523,7 +544,9 @@
   </section>
 
   <footer>
-    Generated from servers.json by <code>minecraftmgr web build</code>.
+    <p class="footer-build-note">Generated from servers.json by <code>minecraftmgr web build</code>.</p>
+    <img class="footer-logo" src="logo.png" alt="Game Night by Mike logo">
+    <p class="footer-copyright">&copy; 2026 Game Night by Mike.</p>
   </footer>
 
 </div>
