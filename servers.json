@@ -21,6 +21,17 @@
     "created": "2026-08-17T02:15:27.219990+00:00",
     "notes": "Migrated onto Velocity 2026-08-17. server_id shortened from cave_1_21_1 to match the no-version-suffix convention used by gravestone/jitterbug/testrealm/poop; data_dir stays cave_1_21_1 (the real folder name on disk). A second cave realm (cave_1_20_4) still needs its own distinct name when it's migrated."
   },
+  "gatorland": {
+    "name": "Gatorland",
+    "status": "active",
+    "port": 26788,
+    "minecraft_version": "26.2",
+    "server_type": "paper",
+    "jar_source": "",
+    "data_dir": "gatorland",
+    "created": "2026-08-17T17:47:31.515631+00:00",
+    "notes": ""
+  },
   "gravestone": {
     "name": "Gravestone",
     "status": "active",
