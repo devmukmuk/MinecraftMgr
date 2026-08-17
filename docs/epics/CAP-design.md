@@ -157,6 +157,41 @@ rejected):
 - New `cloudflared` tunnel ingress rule mapping a new subdomain to that
   vhost.
 
+## Verified live (2026-08-17)
+
+Phases 1 and 3 (Phase 2 skipped, see above) are deployed and confirmed
+working end to end against real data and real public infrastructure, not
+just tests:
+
+- `screenshots organize` run for real from the Windows dev box via the
+  `Z:\` Samba share against oscar's actual realm logs: 1,175 real
+  screenshots, 662 matched (arbor 525, gravestone 129, river 6, cave 1,
+  poop 1), 513 correctly unsorted.
+- `mc-screenshots` Cloudflare Tunnel created (id
+  `88628240-7ad8-442e-b86e-5eac3943b344`), config at
+  `/home/mike/.cloudflared/mc-screenshots-config.yml`, DNS routed via
+  `cloudflared tunnel route dns` (no manual dashboard step).
+- Running on oscar as `mike` (no sudo used anywhere in this deployment) in
+  two `screen` sessions: `mc-screenshots-http` (`minecraftmgr screenshots
+  serve --host 127.0.0.1 --port 8899`) and `mc-screenshots-tunnel`
+  (`cloudflared --no-autoupdate --config
+  .../mc-screenshots-config.yml tunnel run`).
+- `https://shots.gamenightbymike.com/report/` confirmed reachable from a
+  real external client (not just oscar's LAN), 200 with real gallery
+  content.
+- The picker page's new gallery link confirmed live at
+  `https://minecraft.gamenightbymike.com/` (**not** the bare
+  `gamenightbymike.com` apex — that domain's `mission-impossible` tunnel
+  routes it to an unrelated pre-existing app on `:3000`, a mix-up worth
+  remembering next time this project's public URL needs double-checking).
+
+**Not yet done**: neither `screen` session survives an oscar reboot —
+there's no systemd unit (that would need the interactive `sudo` this
+deployment specifically avoided; `mc-trigger` does have systemd units, but
+those were set up by the user directly, not by an SSH-key-only session).
+Worth revisiting if oscar's reboot frequency ever makes that a real
+problem.
+
 ## Explicitly out of scope for this epic
 
 - Matching/tagging by *player* beyond the configured username(s) — the
