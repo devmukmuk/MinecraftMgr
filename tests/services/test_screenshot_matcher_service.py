@@ -6,11 +6,13 @@ import gzip
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from minecraftmgr.models.screenshot_match import ScreenshotMatch
 from minecraftmgr.services.screenshot_matcher_service import (
     RealmSession,
     build_realm_sessions,
     load_manifest,
     match_realm,
+    merge_manifest,
     organize_screenshots,
     parse_screenshot_timestamp,
     write_manifest,
@@ -235,3 +237,54 @@ def test_load_manifest_missing_file_returns_empty(tmp_path: Path) -> None:
     """Loading a manifest that doesn't exist yet returns an empty list."""
 
     assert load_manifest(tmp_path / "manifest.json") == []
+
+
+def _match(relative_path: str, filename: str = "shot.png") -> ScreenshotMatch:
+    return ScreenshotMatch(
+        filename=filename,
+        taken_at=datetime(2026, 8, 17, 14, 30, 0),
+        realm="gravestone",
+        minecraft_version="26.1.2",
+        relative_path=relative_path,
+        matched=True,
+    )
+
+
+def test_merge_manifest_keeps_prior_entries_not_in_the_new_batch() -> None:
+    """A screenshot from an earlier organize run survives a later run that doesn't touch it."""
+
+    existing = [_match("gravestone/26.1.2/old.png", "old.png")]
+    new = [_match("gravestone/26.1.2/new.png", "new.png")]
+
+    merged = merge_manifest(existing, new)
+
+    assert {match.relative_path for match in merged} == {
+        "gravestone/26.1.2/old.png",
+        "gravestone/26.1.2/new.png",
+    }
+
+
+def test_merge_manifest_new_entry_wins_on_relative_path_collision() -> None:
+    """A re-processed file (same relative_path) is replaced by the new match, not duplicated."""
+
+    stale = ScreenshotMatch(
+        filename="shot.png",
+        taken_at=None,
+        realm=None,
+        minecraft_version=None,
+        relative_path="_unsorted/shot.png",
+        matched=False,
+    )
+    fresh = _match("_unsorted/shot.png", "shot.png")
+
+    merged = merge_manifest([stale], [fresh])
+
+    assert merged == [fresh]
+
+
+def test_merge_manifest_empty_existing_returns_new_untouched() -> None:
+    """Merging into an empty prior manifest just returns the new batch."""
+
+    new = [_match("gravestone/26.1.2/new.png", "new.png")]
+
+    assert merge_manifest([], new) == new

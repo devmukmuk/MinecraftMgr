@@ -14,6 +14,7 @@ from minecraftmgr.services.gallery_service import build_gallery
 from minecraftmgr.services.registry_service import list_servers
 from minecraftmgr.services.screenshot_matcher_service import (
     load_manifest,
+    merge_manifest,
     organize_screenshots,
     write_manifest,
 )
@@ -53,6 +54,9 @@ def organize(
         for server in servers
     }
 
+    manifest_file = output_root / _MANIFEST_NAME
+    existing_matches = load_manifest(manifest_file)
+
     matches = organize_screenshots(
         inbox_dir,
         output_root,
@@ -61,13 +65,14 @@ def organize(
         slack=timedelta(seconds=slack_seconds),
     )
 
-    manifest_path = write_manifest(matches, output_root / _MANIFEST_NAME)
+    merged_matches = merge_manifest(existing_matches, matches)
+    manifest_path = write_manifest(merged_matches, manifest_file)
 
     matched = sum(1 for match in matches if match.matched)
     console.print(
         f"[green]Organized[/green] {len(matches)} screenshot(s), {matched} matched to a realm"
     )
-    console.print(f"Manifest: {manifest_path}")
+    console.print(f"Manifest: {manifest_path} ({len(merged_matches)} total)")
 
 
 @app.command("build-gallery")

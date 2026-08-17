@@ -222,6 +222,24 @@ def write_manifest(matches: list[ScreenshotMatch], path: Path) -> Path:
     return path
 
 
+def merge_manifest(
+    existing: list[ScreenshotMatch], new: list[ScreenshotMatch]
+) -> list[ScreenshotMatch]:
+    """Merge freshly organized matches into a prior manifest, keyed by relative_path.
+
+    organize_screenshots only ever sees whatever's currently in the inbox, so
+    writing its result straight to disk would forget every screenshot from a
+    prior run that isn't in the inbox this time. New entries win on a
+    relative_path collision; everything else from the prior manifest carries
+    forward untouched.
+    """
+
+    merged = {match.relative_path: match for match in existing}
+    merged.update({match.relative_path: match for match in new})
+
+    return list(merged.values())
+
+
 def load_manifest(path: Path) -> list[ScreenshotMatch]:
     """Load a screenshot manifest, or an empty list if it doesn't exist yet."""
 
