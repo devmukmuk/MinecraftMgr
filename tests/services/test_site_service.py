@@ -55,6 +55,14 @@ def test_render_site_maps_status_to_label() -> None:
     assert "Test realm" in html
 
 
+def test_render_site_links_to_the_screenshot_gallery() -> None:
+    """The picker page always links out to the screenshot gallery subdomain."""
+
+    html = render_site([])
+
+    assert "https://shots.gamenightbymike.com/report/" in html
+
+
 def test_render_site_empty_registry_still_renders_shell() -> None:
     """An empty realm list still produces a valid page shell, no cards."""
 

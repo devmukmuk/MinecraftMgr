@@ -17,6 +17,7 @@ from minecraftmgr.services.screenshot_matcher_service import (
     organize_screenshots,
     write_manifest,
 )
+from minecraftmgr.services.screenshot_server import run_server
 
 app = typer.Typer(help="Organize screenshots by realm/version and build the gallery page.")
 console = Console()
@@ -88,3 +89,28 @@ def build_gallery_command(
     path = build_gallery(matches, output_path)
 
     console.print(f"[green]Built[/green] {path} ({len(matches)} screenshot(s))")
+
+
+@app.command("serve")
+def serve(
+    directory: Optional[Path] = typer.Option(
+        None, "--directory", help="Root to serve (default: <data_root>/_screenshots)"
+    ),
+    host: str = typer.Option("127.0.0.1", "--host", help="Bind address"),
+    port: int = typer.Option(8899, "--port", help="Bind port"),
+) -> None:
+    """Serve the organized screenshot tree and gallery page over plain HTTP.
+
+    Meant to sit behind a Cloudflare Tunnel bound to 127.0.0.1, the same
+    pattern already used by the trigger daemon and Velocity on oscar.
+    """
+
+    settings = load_settings()
+    root = directory or settings.data_root / _SCREENSHOTS_SUBDIR
+
+    if not root.is_dir():
+        console.print(f"[red]Directory not found:[/red] {root}")
+        raise typer.Exit(code=1)
+
+    console.print(f"[green]Serving[/green] {root} at http://{host}:{port}/report/")
+    run_server(root, host, port)
