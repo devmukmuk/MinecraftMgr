@@ -4,13 +4,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from minecraftmgr.constants import COMPANY_NAME, COMPANY_YEAR, SITE_URL
+from minecraftmgr.constants import COMPANY_NAME, COMPANY_YEAR, LOGO_VERSION, SITE_URL
 from minecraftmgr.models.screenshot_match import ScreenshotMatch
 
 UNSORTED_LABEL = "Unsorted"
 UNKNOWN_VERSION_LABEL = "Unknown"
 
 _PAGE_TEMPLATE = """<title>Screenshot Gallery &mdash; Game Night by Mike</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <style>
   :root {{
     --bg: #f1ecdf;
@@ -313,7 +316,7 @@ _PAGE_TEMPLATE = """<title>Screenshot Gallery &mdash; Game Night by Mike</title>
   </main>
 
   <footer class="site-footer">
-    <img class="footer-logo" src="{site_url}/logo.png" alt="{company_name} logo">
+    <img class="footer-logo" src="{site_url}/logo.png?v={logo_version}" alt="{company_name} logo">
     <p class="footer-copyright">&copy; {company_year} {company_name}.</p>
   </footer>
 </div>
@@ -489,6 +492,7 @@ def render_gallery(matches: list[ScreenshotMatch]) -> str:
         site_url=SITE_URL,
         company_name=COMPANY_NAME,
         company_year=COMPANY_YEAR,
+        logo_version=LOGO_VERSION,
     )
 
 

@@ -7,6 +7,7 @@ from pathlib import Path
 from minecraftmgr.constants import (
     COMPANY_NAME,
     COMPANY_YEAR,
+    LOGO_VERSION,
     REALM_DOMAIN,
     SCREENSHOTS_URL,
     TRIGGER_URL,
@@ -19,6 +20,9 @@ _STATUS_LABELS = {
 }
 
 _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <style>
   :root {{
     --bg: #f1ecdf;
@@ -391,7 +395,7 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
 
   <footer>
     <p class="footer-build-note">Generated from servers.json by <code>minecraftmgr web build</code>.</p>
-    <img class="footer-logo" src="logo.png" alt="{company_name} logo">
+    <img class="footer-logo" src="logo.png?v={logo_version}" alt="{company_name} logo">
     <p class="footer-copyright">&copy; {company_year} {company_name}.</p>
   </footer>
 
@@ -543,6 +547,7 @@ def render_site(servers: list[ServerEntry]) -> str:
         screenshots_url=SCREENSHOTS_URL,
         company_name=COMPANY_NAME,
         company_year=COMPANY_YEAR,
+        logo_version=LOGO_VERSION,
         cards=cards,
     )
 
