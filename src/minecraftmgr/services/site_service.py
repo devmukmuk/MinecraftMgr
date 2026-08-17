@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from minecraftmgr.constants import REALM_DOMAIN, TRIGGER_URL
+from minecraftmgr.constants import REALM_DOMAIN, SCREENSHOTS_URL, TRIGGER_URL
 from minecraftmgr.models.server_entry import ServerEntry
 
 _STATUS_LABELS = {
@@ -307,6 +307,28 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
     gap: 0.3rem;
   }}
 
+  .gallery-section {{
+    margin-top: 2.4rem;
+    padding-top: 1.6rem;
+    border-top: 1px solid var(--line);
+  }}
+
+  .gallery-link {{
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: inherit;
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--accent-ink);
+    background: var(--accent);
+    border-radius: 7px;
+    padding: 0.55rem 1rem;
+    text-decoration: none;
+  }}
+
+  .gallery-link:hover {{ opacity: 0.92; }}
+
   footer {{
     margin-top: 3rem;
     padding-top: 1.2rem;
@@ -332,6 +354,12 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
     <div class="grid">
 {cards}
     </div>
+  </section>
+
+  <section class="gallery-section">
+    <h2 class="section-title">Screenshots</h2>
+    <p class="section-sub">Screenshots from every realm, sorted by realm and version.</p>
+    <a class="gallery-link" href="{screenshots_url}">Open the gallery &rarr;</a>
   </section>
 
   <footer>
@@ -480,7 +508,12 @@ def render_site(servers: list[ServerEntry]) -> str:
 
     cards = "\n".join(_render_card(server) for server in servers)
 
-    return _PAGE_TEMPLATE.format(domain=REALM_DOMAIN, trigger_url=TRIGGER_URL, cards=cards)
+    return _PAGE_TEMPLATE.format(
+        domain=REALM_DOMAIN,
+        trigger_url=TRIGGER_URL,
+        screenshots_url=SCREENSHOTS_URL,
+        cards=cards,
+    )
 
 
 def build_site(servers: list[ServerEntry], output_path: Path) -> Path:

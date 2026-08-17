@@ -89,7 +89,22 @@ logic has been proven against real data.
   exposure. Proves the session-window logic before anything is Windows- or
   DNS-facing.
 
-### Phase 2 — Windows-side sync
+### Phase 2 — Windows-side sync (deprioritized, likely unnecessary)
+
+**Update 2026-08-17**: while confirming Phase 1 against real data, found that
+`Z:` on the Windows dev box is already a writable Samba mount of oscar's
+exact `/opt/mc` (`\\192.168.1.113\Minecraft`) — same realm folders, same
+real `logs/*.log.gz`. That means the manual loop (`robocopy` real
+screenshots into `Z:\_screenshots\_inbox`, then `minecraftmgr screenshots
+organize` / `build-gallery` with `data_root: Z:/` in `minecraftmgr.yaml`)
+already works end to end today, no dedicated sync command needed. Ran for
+real: 1,175 screenshots, 662 matched to a realm (arbor 525, gravestone 129,
+river 6, cave 1, poop 1), 513 correctly unsorted (mostly pre-dating oscar's
+current log history). A dedicated `sync-screenshots.ps1`/`minecraftmgr
+screenshots sync` command is still on the table if this ever needs to run
+unattended/scheduled, but isn't planned unless that becomes a real need.
+
+Original Phase 2 plan, kept for reference if revisited:
 
 - `tools/scripts/sync-screenshots.ps1` (or a `minecraftmgr screenshots sync`
   command, TBD at build time): walks both source folders, `rsync`/`scp`s
@@ -101,17 +116,46 @@ logic has been proven against real data.
 
 ### Phase 3 — Public exposure
 
+**Revised 2026-08-17** (superseding the original nginx sketch below): nginx
+is installed on oscar but its `sites-available`/`sites-enabled` are
+root-owned and the service itself is disabled — `mike` (the Claude Code SSH
+key's user) can't write there or start it without an interactive `sudo`
+password, which the automation key can't supply. Checked live rather than
+assumed. `mike` *can*, however, create Cloudflare Tunnels and route DNS
+without sudo (already done twice, for `mc-trigger` and `mission-impossible`),
+and already has read access to `/opt/mc/_screenshots` via the `backup`
+group. So the actual plan drops nginx entirely:
+
+- `services/screenshot_server.py` + `minecraftmgr screenshots serve`: a
+  small stdlib `ThreadingHTTPServer` (`http.server.SimpleHTTPRequestHandler`
+  rooted at the served directory) — no new dependency, no root needed.
+- Runs on oscar as `mike` in a `screen -dmS mc-screenshots-http` session
+  bound to `127.0.0.1:8899` — the same "should be a service but isn't yet"
+  pattern already used for Velocity itself (`screen -dmS velocity_proxy`,
+  not systemd).
+- A new, dedicated Cloudflare Tunnel (`mc-screenshots`, not reusing
+  `mc-trigger` or `mission-impossible` — matches the existing precedent of
+  one tunnel per concern) with an ingress rule mapping
+  `shots.gamenightbymike.com` → `http://127.0.0.1:8899`, run via its own
+  `screen -dmS mc-screenshots-tunnel cloudflared tunnel run mc-screenshots`.
+- `cloudflared tunnel route dns mc-screenshots shots.gamenightbymike.com` —
+  no manual Cloudflare dashboard step needed, same as the existing tunnels.
+- No auth, per the 2026-08-17 decision above.
+- Link added from the realm-picker page (`site_service.py`,
+  `constants.SCREENSHOTS_URL`) to `https://shots.gamenightbymike.com/report/`
+  — added only after the tunnel/DNS were confirmed actually reachable, to
+  avoid a dead link briefly going live on the real family-facing page.
+- This is the phase that touches shared infra (new public DNS record, new
+  tunnel, new always-on process on oscar) — the code (the `serve` command)
+  went through the normal PR/merge cycle, but the live oscar deployment
+  steps were called out and confirmed with the user before running.
+
+Original nginx-based sketch (not used, kept for context on why it was
+rejected):
 - New nginx vhost on oscar serving `/opt/mc/_screenshots` (static files +
   `report/index.html`).
-- New `cloudflared` tunnel ingress rule (either a new ingress line on an
-  existing tunnel or a third tunnel, TBD at build time) mapping a new
-  subdomain — e.g. `shots.gamenightbymike.com` — to that vhost.
-- No auth, per the 2026-08-17 decision above.
-- Link added from the realm-picker page (`site_service.py`) to the new
-  subdomain.
-- This is the phase that touches shared infra (new public DNS record, new
-  tunnel ingress) — treat as its own confirmed step, not bundled into a
-  Phase 1/2 PR.
+- New `cloudflared` tunnel ingress rule mapping a new subdomain to that
+  vhost.
 
 ## Explicitly out of scope for this epic
 
@@ -126,14 +170,15 @@ logic has been proven against real data.
 - PIN-gating or any other access control on the Phase 3 endpoint (revisit
   only if it becomes a real problem in practice).
 
-## Open questions to resolve before/while building
+## Open questions — resolved
 
-- Exact username(s) to match against in realm logs (single Mojang account
-  assumed, not yet confirmed against `usercache.json` for every realm).
-- Confirm oscar and the Windows dev box are both NTP-synced and on the same
-  timezone, to size the matching slack correctly.
-- Final choice between a `minecraftmgr screenshots sync` Typer command vs. a
-  standalone PowerShell script for Phase 2 — deferred to build time, doesn't
-  affect Phase 1's design.
-- Phase 3's exact tunnel/subdomain shape (new ingress line vs. new tunnel) —
-  deferred to when Phase 3 actually starts.
+- Username: `FourEight1516` (confirmed 2026-08-17, matches `usercache.json`
+  on the realms tried).
+- NTP/timezone skew: not separately verified, but the default 5-second slack
+  produced a sane real-data result (662/1,175 matched, with the 513 misses
+  explained by pre-dating oscar's log history rather than by boundary
+  misses) — good enough in practice, revisit only if matches start looking
+  wrong at session edges.
+- Phase 2: resolved by not building it — see the Phase 2 section above.
+- Phase 3's tunnel/subdomain shape: a new dedicated tunnel (`mc-screenshots`)
+  and `shots.gamenightbymike.com` — see the revised Phase 3 section above.
