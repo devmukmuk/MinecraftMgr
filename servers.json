@@ -1,4 +1,15 @@
 {
+  "arbor": {
+    "name": "Arbor",
+    "status": "active",
+    "port": 26124,
+    "minecraft_version": "1.21.10",
+    "server_type": "paper",
+    "jar_source": "",
+    "data_dir": "arbor_1_21_10",
+    "created": "2026-08-17T03:42:44.127245+00:00",
+    "notes": ""
+  },
   "cave": {
     "name": "Cave",
     "status": "active",
