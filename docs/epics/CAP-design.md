@@ -175,7 +175,12 @@ just tests:
   two `screen` sessions: `mc-screenshots-http` (`minecraftmgr screenshots
   serve --host 127.0.0.1 --port 8899`) and `mc-screenshots-tunnel`
   (`cloudflared --no-autoupdate --config
-  .../mc-screenshots-config.yml tunnel run`).
+  .../mc-screenshots-config.yml tunnel run`). **Stays this way on
+  purpose** — unlike Velocity (see [PROV-design.md](PROV-design.md)'s
+  "Ground truth" section, decided `minecraft` 2026-08-17), these two never
+  touch realm world data, so there's no reason to route them through
+  `minecraft`/sudo at all. Don't move these if a future cleanup
+  standardizes other oscar processes onto `minecraft`.
 - `https://shots.gamenightbymike.com/report/` confirmed reachable from a
   real external client (not just oscar's LAN), 200 with real gallery
   content.
