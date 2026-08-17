@@ -73,6 +73,18 @@ def test_render_gallery_footer_links_the_shared_logo_and_copyright() -> None:
     assert "&copy; 2026 Game Night by Mike." in html
 
 
+def test_render_gallery_footer_sits_in_the_sidebar_below_reset_filters() -> None:
+    """The footer lives in the filter sidebar, under Reset filters -- not below the image grid."""
+
+    html = render_gallery([])
+
+    reset_index = html.index('id="reset-filters"')
+    footer_index = html.index('<footer class="site-footer">')
+    nav_close_index = html.index("</nav>")
+
+    assert reset_index < footer_index < nav_close_index
+
+
 def test_render_gallery_disables_browser_caching_of_the_page() -> None:
     """The gallery ships no-cache meta tags so a rebuilt manifest isn't hidden behind a stale cache."""
 

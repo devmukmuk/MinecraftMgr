@@ -266,25 +266,24 @@ _PAGE_TEMPLATE = """<title>Screenshot Gallery &mdash; Game Night by Mike</title>
   .lightbox-close:hover, .lightbox-close:focus-visible {{ opacity: 1; }}
 
   footer.site-footer {{
-    grid-column: 1 / -1;
-    padding: 1.5rem 1.75rem 2.5rem;
+    margin-top: 1.4rem;
+    padding-top: 1.2rem;
     border-top: 1px solid var(--line);
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.5rem;
     text-align: center;
   }}
 
   .footer-logo {{
     display: block;
-    max-height: 32px;
+    max-height: 28px;
     width: auto;
   }}
 
   .footer-copyright {{
-    max-width: 40ch;
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     color: var(--ink-dim);
     opacity: 0.75;
   }}
@@ -305,6 +304,11 @@ _PAGE_TEMPLATE = """<title>Screenshot Gallery &mdash; Game Night by Mike</title>
     </div>
 
     <button class="reset-btn" id="reset-filters">Reset filters</button>
+
+    <footer class="site-footer">
+      <img class="footer-logo" src="{site_url}/logo.png?v={logo_version}" alt="{company_name} logo">
+      <p class="footer-copyright">&copy; {company_year} {company_name}.</p>
+    </footer>
   </nav>
 
   <main>
@@ -314,11 +318,6 @@ _PAGE_TEMPLATE = """<title>Screenshot Gallery &mdash; Game Night by Mike</title>
     </div>
     <p class="empty-state" id="empty-state" hidden>No screenshots match the current filters.</p>
   </main>
-
-  <footer class="site-footer">
-    <img class="footer-logo" src="{site_url}/logo.png?v={logo_version}" alt="{company_name} logo">
-    <p class="footer-copyright">&copy; {company_year} {company_name}.</p>
-  </footer>
 </div>
 
 <div class="lightbox" id="lightbox" hidden>
