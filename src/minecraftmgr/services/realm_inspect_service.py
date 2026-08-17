@@ -106,6 +106,28 @@ def _read_server_port(properties_path: Path) -> int | None:
     return None
 
 
+def _read_start_sh_port(start_sh_path: Path) -> int | None:
+    """Read the PORT= assignment from start.sh, or None if absent/unset/unparseable.
+
+    This is the value actually passed via `--port $PORT` at boot, which wins
+    over whatever server.properties says -- confirmed live auditing oscar's
+    sitting realms, where server.properties and start.sh disagreed for
+    arbor_1_21_10, and poop_1_21_1/poop_1_21_3 both really collide at the
+    start.sh value (26111), not the server.properties one (28314).
+    """
+
+    if not start_sh_path.exists():
+        return None
+
+    for line in start_sh_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("PORT="):
+            value = stripped.split("=", 1)[1].strip().strip("\"'")
+            return int(value) if value.isdigit() else None
+
+    return None
+
+
 def inspect_realm_dir(realm_dir: Path) -> RealmInspection:
     """Inspect a realm's data directory and positively identify its server engine."""
 
@@ -126,6 +148,18 @@ def inspect_realm_dir(realm_dir: Path) -> RealmInspection:
             "could be Forge or a manifest this heuristic doesn't recognize, treat with suspicion."
         )
 
+    properties_port = _read_server_port(realm_dir / "server.properties")
+    start_sh_port = _read_start_sh_port(realm_dir / "start.sh")
+
+    if start_sh_port is not None and start_sh_port != properties_port:
+        notes.append(
+            f"server.properties says server-port={properties_port}, but start.sh passes "
+            f"--port {start_sh_port} on the command line, which wins at boot -- reporting "
+            f"{start_sh_port} as the real current_port."
+        )
+
+    current_port = start_sh_port if start_sh_port is not None else properties_port
+
     return RealmInspection(
         data_dir=realm_dir.name,
         has_mods_dir=has_mods_dir,
@@ -133,7 +167,7 @@ def inspect_realm_dir(realm_dir: Path) -> RealmInspection:
         jar_main_class=main_class,
         detected_server_type=detected_server_type,
         online_mode_currently_true=_read_online_mode(realm_dir / "server.properties"),
-        current_port=_read_server_port(realm_dir / "server.properties"),
+        current_port=current_port,
         has_paper_global_yml=(realm_dir / "config" / "paper-global.yml").exists(),
         notes=notes,
     )
