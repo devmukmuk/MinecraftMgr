@@ -39,13 +39,31 @@ Confirmed live on oscar (not assumed) while designing this epic:
 - `config/paper-global.yml` (the file holding the Velocity trust block) only
   exists after a realm's **first boot** — this was the actual blocker hit
   converting `gravestone`/`jitterbug`.
-- Velocity itself runs as a `minecraft`-owned `screen -dmS velocity_proxy`
-  session, **not systemd** (despite what earlier docs assumed) — confirmed
-  via `ps aux`. Restarting it to pick up new `[servers]`/`[forced-hosts]`
-  entries needs the same `minecraft`-user-only rule as any realm.
+- Velocity runs as a `screen -dmS velocity_proxy` session, **not systemd**
+  (despite what earlier docs assumed). **Correction (2026-08-17):** an
+  earlier version of this doc claimed that session is `minecraft`-owned as
+  a hard rule, "confirmed via `ps aux`" — that was true at the one moment
+  it was checked, not an enforced fact. `/opt/mc/_proxy/` is entirely
+  `backup`-group-writable, and both `mike` and `minecraft` are in that
+  group, so nothing actually stops either user from starting it — file
+  ownership across `_proxy/`'s logs and `velocity.jar` itself was found
+  genuinely mixed between both users, going back weeks. There's no
+  technical wall here the way there is for a realm's own `session.lock`
+  (owned by `minecraft`, group-read-only) — that's a real, enforced
+  boundary; Velocity's user was just drift, not enforcement.
+  **Decided going forward: `minecraft`**, purely for consistency with every
+  actual realm process, not because anything requires it. Restarting it to
+  pick up new `[servers]`/`[forced-hosts]` entries should go through
+  `minecraft` from now on.
 - `/opt/mc/_proxy/` (containing `velocity.toml`) is `mike`-writable, though —
   so *editing* that file doesn't need the `minecraft` boundary, only
-  *restarting* Velocity does.
+  *restarting* Velocity does (by convention now, not by permission).
+- **This does not extend to CAP's screenshot infrastructure**
+  (`mc-screenshots-http`, `mc-screenshots-tunnel`) — those are deliberately
+  `mike`-owned by design (see [CAP-design.md](CAP-design.md)'s Phase 3
+  section), since they never touch realm world data and specifically avoid
+  needing `minecraft`/sudo at all. Only Velocity moves to `minecraft`;
+  don't "consolidate everything" past that.
 - Of the 7 sitting realms: `gatorland_26_2` is a genuinely empty directory.
   `arbor_1_21_10` has a `mods/` folder (Fabric, like `gravestone` before
   conversion) and `online-mode=true` still set. `cave_1_20_4`, `cave_1_21_1`,
