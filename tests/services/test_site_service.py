@@ -63,6 +63,24 @@ def test_render_site_links_to_the_screenshot_gallery() -> None:
     assert "https://shots.gamenightbymike.com/report/" in html
 
 
+def test_render_site_eyebrow_shows_the_real_site_domain() -> None:
+    """The hero eyebrow shows minecraft.gamenightbymike.com, the page's real address."""
+
+    html = render_site([])
+
+    assert '<span class="eyebrow">minecraft.gamenightbymike.com</span>' in html
+    assert "mc.gamenightbymike.com" not in html
+
+
+def test_render_site_footer_shows_the_logo_and_copyright() -> None:
+    """The footer carries the shared Game Night by Mike logo and copyright line."""
+
+    html = render_site([])
+
+    assert '<img class="footer-logo" src="logo.png"' in html
+    assert "&copy; 2026 Game Night by Mike." in html
+
+
 def test_render_site_empty_registry_still_renders_shell() -> None:
     """An empty realm list still produces a valid page shell, no cards."""
 

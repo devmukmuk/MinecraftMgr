@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from minecraftmgr.constants import COMPANY_NAME, COMPANY_YEAR, SITE_URL
 from minecraftmgr.models.screenshot_match import ScreenshotMatch
 
 UNSORTED_LABEL = "Unsorted"
@@ -260,6 +261,30 @@ _PAGE_TEMPLATE = """<title>Screenshot Gallery &mdash; Game Night by Mike</title>
   }}
 
   .lightbox-close:hover, .lightbox-close:focus-visible {{ opacity: 1; }}
+
+  footer.site-footer {{
+    grid-column: 1 / -1;
+    padding: 1.5rem 1.75rem 2.5rem;
+    border-top: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    text-align: center;
+  }}
+
+  .footer-logo {{
+    display: block;
+    max-height: 32px;
+    width: auto;
+  }}
+
+  .footer-copyright {{
+    max-width: 40ch;
+    font-size: 0.72rem;
+    color: var(--ink-dim);
+    opacity: 0.75;
+  }}
 </style>
 
 <div class="layout">
@@ -286,6 +311,11 @@ _PAGE_TEMPLATE = """<title>Screenshot Gallery &mdash; Game Night by Mike</title>
     </div>
     <p class="empty-state" id="empty-state" hidden>No screenshots match the current filters.</p>
   </main>
+
+  <footer class="site-footer">
+    <img class="footer-logo" src="{site_url}/logo.png" alt="{company_name} logo">
+    <p class="footer-copyright">&copy; {company_year} {company_name}.</p>
+  </footer>
 </div>
 
 <div class="lightbox" id="lightbox" hidden>
@@ -456,6 +486,9 @@ def render_gallery(matches: list[ScreenshotMatch]) -> str:
         version_checkboxes=_render_checkbox_group("version", version_counts),
         total=len(matches),
         cards=cards,
+        site_url=SITE_URL,
+        company_name=COMPANY_NAME,
+        company_year=COMPANY_YEAR,
     )
 
 

@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from minecraftmgr.constants import REALM_DOMAIN, SCREENSHOTS_URL, TRIGGER_URL
+from minecraftmgr.constants import (
+    COMPANY_NAME,
+    COMPANY_YEAR,
+    REALM_DOMAIN,
+    SCREENSHOTS_URL,
+    TRIGGER_URL,
+)
 from minecraftmgr.models.server_entry import ServerEntry
 
 _STATUS_LABELS = {
@@ -333,15 +339,36 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
     margin-top: 3rem;
     padding-top: 1.2rem;
     border-top: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    text-align: center;
+  }}
+
+  .footer-build-note {{
     font-size: 0.78rem;
     color: var(--ink-dim);
+  }}
+
+  .footer-logo {{
+    display: block;
+    max-height: 32px;
+    width: auto;
+  }}
+
+  .footer-copyright {{
+    max-width: 40ch;
+    font-size: 0.72rem;
+    color: var(--ink-dim);
+    opacity: 0.75;
   }}
 </style>
 
 <div class="wrap">
 
   <header class="hero">
-    <span class="eyebrow">mc.{domain}</span>
+    <span class="eyebrow">minecraft.{domain}</span>
     <h1>Game Night by Mike</h1>
     <p class="tagline">Pick a realm, copy its address, paste it into the Minecraft launcher. No ports, nothing to install.</p>
   </header>
@@ -363,7 +390,9 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
   </section>
 
   <footer>
-    Generated from servers.json by <code>minecraftmgr web build</code>.
+    <p class="footer-build-note">Generated from servers.json by <code>minecraftmgr web build</code>.</p>
+    <img class="footer-logo" src="logo.png" alt="{company_name} logo">
+    <p class="footer-copyright">&copy; {company_year} {company_name}.</p>
   </footer>
 
 </div>
@@ -512,6 +541,8 @@ def render_site(servers: list[ServerEntry]) -> str:
         domain=REALM_DOMAIN,
         trigger_url=TRIGGER_URL,
         screenshots_url=SCREENSHOTS_URL,
+        company_name=COMPANY_NAME,
+        company_year=COMPANY_YEAR,
         cards=cards,
     )
 
