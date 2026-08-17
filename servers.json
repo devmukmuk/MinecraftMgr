@@ -21,6 +21,17 @@
     "created": "2026-08-16T01:33:47.768092+00:00",
     "notes": "not an active realm; was actually running vanilla despite this field, converted to real Paper 2026-08-16, now behind Velocity"
   },
+  "poop_1_21_1": {
+    "name": "Poop",
+    "status": "active",
+    "port": 26314,
+    "minecraft_version": "1.21.1",
+    "server_type": "paper",
+    "jar_source": "",
+    "data_dir": "poop_1_21_1",
+    "created": "2026-08-17T01:30:25.206276+00:00",
+    "notes": "Migrated onto Velocity 2026-08-17; was already Paper (server_1_21_1.jar, non-standard filename), moved off 26111 to resolve a real collision with poop_1_21_3"
+  },
   "testrealm": {
     "name": "Test Realm",
     "status": "inactive",
