@@ -54,6 +54,17 @@
     "created": "2026-08-17T01:45:03.080914+00:00",
     "notes": "Migrated onto Velocity 2026-08-17; was already Paper (server_1_21_1.jar, non-standard filename), moved off 26111 to resolve a real collision with poop_1_21_3. server_id shortened from poop_1_21_1 to match the no-version-suffix convention used by gravestone/jitterbug/testrealm; data_dir stays poop_1_21_1 (the real folder name on disk)."
   },
+  "river": {
+    "name": "River",
+    "status": "active",
+    "port": 26010,
+    "minecraft_version": "1.21.1",
+    "server_type": "paper",
+    "jar_source": "",
+    "data_dir": "river_1_21_1",
+    "created": "2026-08-17T04:12:23.341549+00:00",
+    "notes": ""
+  },
   "testrealm": {
     "name": "Test Realm",
     "status": "inactive",
