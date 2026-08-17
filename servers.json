@@ -21,7 +21,7 @@
     "created": "2026-08-16T01:33:47.768092+00:00",
     "notes": "not an active realm; was actually running vanilla despite this field, converted to real Paper 2026-08-16, now behind Velocity"
   },
-  "poop_1_21_1": {
+  "poop": {
     "name": "Poop",
     "status": "active",
     "port": 26314,
@@ -29,8 +29,8 @@
     "server_type": "paper",
     "jar_source": "",
     "data_dir": "poop_1_21_1",
-    "created": "2026-08-17T01:30:25.206276+00:00",
-    "notes": "Migrated onto Velocity 2026-08-17; was already Paper (server_1_21_1.jar, non-standard filename), moved off 26111 to resolve a real collision with poop_1_21_3"
+    "created": "2026-08-17T01:45:03.080914+00:00",
+    "notes": "Migrated onto Velocity 2026-08-17; was already Paper (server_1_21_1.jar, non-standard filename), moved off 26111 to resolve a real collision with poop_1_21_3. server_id shortened from poop_1_21_1 to match the no-version-suffix convention used by gravestone/jitterbug/testrealm; data_dir stays poop_1_21_1 (the real folder name on disk)."
   },
   "testrealm": {
     "name": "Test Realm",
