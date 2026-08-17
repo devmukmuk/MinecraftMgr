@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import zipfile
 from pathlib import Path
 
@@ -103,6 +104,48 @@ def test_mods_dir_present_but_not_fabric_detected_adds_a_note(tmp_path: Path) ->
     inspection = inspect_realm_dir(realm_dir)
 
     assert any("mods/" in note for note in inspection.notes)
+
+
+def test_start_sh_jar_wins_over_newer_stray_jar(tmp_path: Path) -> None:
+    """start.sh's actual JAR wins over a newer, unrelated jar sitting in the same folder.
+
+    Confirmed live: poop_1_21_1's start.sh launches server_poop_1_21_1.jar
+    (older), but a newer, unrelated server_poop_1_21_3.jar left in the same
+    folder was what the old mtime-glob heuristic picked instead, silently
+    misreporting the realm's real engine type.
+    """
+
+    realm_dir = tmp_path / "poop_1_21_1"
+    realm_dir.mkdir()
+    _make_jar(realm_dir / "server_poop_1_21_1.jar", "io.papermc.paperclip.Paperclip")
+    # newer stray jar (later mtime, forced explicitly) -- must NOT win despite that
+    _make_jar(realm_dir / "server_poop_1_21_3.jar", "net.minecraft.bundler.Main")
+    newer = os.path.getmtime(realm_dir / "server_poop_1_21_1.jar") + 100
+    os.utime(realm_dir / "server_poop_1_21_3.jar", (newer, newer))
+    (realm_dir / "start.sh").write_text(
+        '#!/bin/bash\nNAME="poop_1_21_1"\nJAR="server_${NAME}.jar"\n'
+        'java -jar "$JAR" nogui --port 26111\n',
+        encoding="utf-8",
+    )
+
+    inspection = inspect_realm_dir(realm_dir)
+
+    assert inspection.jar_path == realm_dir / "server_poop_1_21_1.jar"
+    assert inspection.detected_server_type == "paper"
+    assert any("start.sh actually launches server_poop_1_21_1.jar" in note for note in inspection.notes)
+
+
+def test_glob_fallback_used_when_no_start_sh(tmp_path: Path) -> None:
+    """No start.sh at all (e.g. cave_1_20_4) falls back to the mtime-glob heuristic, no note."""
+
+    realm_dir = tmp_path / "cave_1_20_4"
+    realm_dir.mkdir()
+    _make_jar(realm_dir / "server_cave_1_20_4.jar", "io.papermc.paperclip.Paperclip")
+
+    inspection = inspect_realm_dir(realm_dir)
+
+    assert inspection.jar_path == realm_dir / "server_cave_1_20_4.jar"
+    assert not any("start.sh actually launches" in note for note in inspection.notes)
 
 
 def test_reads_online_mode_and_port_from_server_properties(tmp_path: Path) -> None:
