@@ -64,6 +64,15 @@ checkout can't push.
 | [Delete a realm completely](delete-realm.md) | None | Irreversible — read this one fully before running anything |
 | [Convert vanilla/Fabric/Forge → Paper](convert-engine.md) | Deliberately manual/guided | One direction only — see that doc for why Paper → vanilla isn't a thing here |
 
+## For family members, not admins
+
+One doc in this folder isn't an admin runbook at all —
+[prism-user-guide.md](prism-user-guide.md) is a plain-language guide for
+anyone in the family on downloading, installing, and using
+[Prism Launcher](https://prismlauncher.org) to join our realms, including
+handling multiple Minecraft accounts on one computer. No CLI, no oscar
+access, nothing `minecraftmgr` touches.
+
 ## Automating these, one at a time
 
 The plan is to pick these off individually rather than build a big change-realm
