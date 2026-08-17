@@ -44,10 +44,9 @@ nano /opt/mc/_proxy/velocity.toml
 # delete this realm's line from [servers] and its line from [forced-hosts]
 ```
 
-As `minecraft`, restart to apply:
+As `mike`, restart to apply:
 
 ```bash
-sudo -iu minecraft
 screen -S velocity_proxy -X quit
 cd /opt/mc/_proxy
 screen -dmS velocity_proxy java -Xms512M -Xmx1G -jar velocity.jar
