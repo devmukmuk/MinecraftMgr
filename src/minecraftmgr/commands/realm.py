@@ -1,11 +1,12 @@
-"""Realm commands: inspect, provision, activate, start, stop, status.
+"""Realm commands: inspect, provision, activate, start, stop, status, validate.
 
 Meant to run on oscar as the `minecraft` user -- never the `mike`
-automation key, since these start/stop realm processes. `status` doesn't
-mutate anything, but `screen` sessions are per-user, so it still has to run
-as `minecraft` to see the realms' actual sessions -- checking as any other
-user looks like nothing is running, even when it is. `provision`/`activate`
-never touch servers.json or velocity.toml themselves; they print the exact
+automation key, since these start/stop realm processes. `status` and
+`validate` don't mutate anything by default (`validate` does with --fix),
+but `screen` sessions are per-user, so `status` still has to run as
+`minecraft` to see the realms' actual sessions -- checking as any other user
+looks like nothing is running, even when it is. `provision`/`activate` never
+touch servers.json or velocity.toml themselves; they print the exact
 snippets needed to wire the realm in from the dev box / Cloudflare
 dashboard.
 """
@@ -37,6 +38,7 @@ from minecraftmgr.services.realm_inspect_service import (
     require_velocity_compatible,
 )
 from minecraftmgr.services.realm_scaffold_service import ScaffoldError, scaffold_realm_dir
+from minecraftmgr.services.realm_validate_service import fix_start_sh, validate_start_sh
 from minecraftmgr.services.registry_service import list_servers
 from minecraftmgr.services.trigger_service import TriggerError, realm_running, start_realm, stop_realm
 
@@ -363,3 +365,58 @@ def status_cmd(
         )
 
     console.print(table)
+
+
+@app.command("validate")
+def validate_cmd(
+    server_id: Optional[str] = typer.Argument(
+        None, help="Realm id to validate. Omit with --all to validate every registered realm."
+    ),
+    all_servers: bool = typer.Option(False, "--all", help="Validate every registered realm"),
+    fix: bool = typer.Option(
+        False, "--fix", help="Regenerate start.sh from the canonical template for any realm with issues"
+    ),
+) -> None:
+    """Check each realm's start.sh against tools/templates/start.sh.template; --fix to regenerate it.
+
+    Only checks the IPv4 flag and the port matching servers.json -- MEM_MIN/
+    MEM_MAX aren't modeled in the registry yet, so --fix preserves whatever
+    the file already has for those rather than guessing a new value.
+    """
+
+    if bool(server_id) == all_servers:
+        console.print("[red]Pass exactly one of a server id or --all[/red]")
+        raise typer.Exit(code=1)
+
+    settings = load_settings()
+    targets = _resolve_targets(settings, server_id, all_servers)
+
+    any_issues = False
+
+    for server in targets:
+        realm_dir = settings.data_root / server.data_dir
+        validation = validate_start_sh(realm_dir, server)
+
+        if validation.ok:
+            console.print(f"[green]OK[/green] {server.server_id}")
+            continue
+
+        any_issues = True
+        console.print(f"[yellow]{server.server_id}[/yellow]")
+        for issue in validation.issues:
+            console.print(f"  - {issue}")
+
+        if not fix:
+            continue
+
+        if not validation.exists:
+            console.print("  [red]Cannot fix: start.sh doesn't exist (needs provision/activate)[/red]")
+            continue
+
+        fix_start_sh(realm_dir, server, validation)
+        mem_min = validation.current_mem_min or "2G (default)"
+        mem_max = validation.current_mem_max or "4G (default)"
+        console.print(f"  [green]Fixed[/green] (mem_min={mem_min}, mem_max={mem_max} preserved)")
+
+    if any_issues and not fix and not all_servers:
+        raise typer.Exit(code=1)

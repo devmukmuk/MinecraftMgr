@@ -1,7 +1,8 @@
 # Epic PROV — Realm Provisioning
 
-Scope: `models/realm_inspection.py`, `services/realm_inspect_service.py`,
-`services/jar_cache_service.py`, `services/realm_scaffold_service.py`,
+Scope: `models/realm_inspection.py`, `models/start_sh_validation.py`,
+`services/realm_inspect_service.py`, `services/jar_cache_service.py`,
+`services/realm_scaffold_service.py`, `services/realm_validate_service.py`,
 `services/provision_service.py`, `services/realm_handoff_service.py`,
 `commands/realm.py`, `tools/templates/`.
 
@@ -198,6 +199,41 @@ wired into `velocity.toml` (edited via the `mike` key, restarted by hand in
 a `minecraft` shell), and started for real end-to-end through the deployed
 AUTOSTART button on the picker page — confirmed via `ps aux` on oscar, not
 just the page's own status report.
+
+## `realm validate` (2026-08-18)
+
+Found live, while replacing `start_all_minecraft_servers.sh`/
+`stop_all_minecraft_servers.sh` with `realm start`/`stop --all` and fixing
+the boot-time `minecraft-autostart.service` (see [DEP.md](DEP.md)): running
+`start --all` for the first time ever against every registered realm
+surfaced that `arbor_1_21_10`, `cave_1_21_1`, `poop_1_21_1`, and
+`river_1_21_1` all have hand-edited `start.sh` files requesting
+`-Xmx14G` — impossible to satisfy even one at a time on oscar's 15Gi total
+RAM, let alone four at once — and none of them have the mandatory
+`-Djava.net.preferIPv4Stack=true` flag `oscar-migration-plan.md` already
+documented as required. Both defects were invisible until now because the
+old hardcoded-array script never actually tried starting these four.
+
+**`services/realm_validate_service.py`** — `validate_start_sh(realm_dir,
+server)` checks a realm's `start.sh` against two things only: the IPv4 flag,
+and whether its `PORT=` matches `servers.json` (the registry is
+authoritative for port; `start.sh`'s own value is what wins at boot, per
+`realm_inspect_service`'s existing port-mismatch handling). It deliberately
+does **not** validate `MEM_MIN`/`MEM_MAX` against anything — those aren't
+modeled in `ServerEntry` (see Open work below), so there's no authoritative
+value to check against. `fix_start_sh()` regenerates the file from
+`tools/templates/start.sh.template` (reusing
+`realm_scaffold_service.render_start_sh()`, now public, so there's exactly
+one place that knows the template's placeholders), preserving whatever
+`MEM_MIN`/`MEM_MAX` the file already had — it never silently changes a
+realm's memory allocation, even a wrong one like `14G`. Fixing the actual
+`14G` values is a separate, deliberate decision, not something `--fix`
+does automatically.
+
+**`commands/realm.py`**'s `validate <id>|--all [--fix]` reports per-realm
+issues and, with `--fix`, rewrites `start.sh` for anything found (or reports
+it can't when `start.sh` doesn't exist at all — that needs
+`provision`/`activate`, not `validate`).
 
 ## Open work
 
