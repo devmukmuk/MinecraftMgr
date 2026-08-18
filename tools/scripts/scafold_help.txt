@@ -1,0 +1,7 @@
+# Imported verbatim from oscar:/opt/mc/Scripts/scafold_help.txt on 2026-08-18.
+# Usage example for scafold_new_minecraft_server.sh (reference only, see
+# tools/scripts/README.md).
+
+SERVER_VER=1.21.1 PORT=26005 SEED=-73126979298690338 \
+USE=/srv/minecraft/river_1_21_1 \
+./scafold_new_minecraft_server.sh arbor_1_21_1
