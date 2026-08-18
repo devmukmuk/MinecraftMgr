@@ -5,7 +5,10 @@
 `trigger_service.start_realm()`/`stop_realm()` (the same logic the
 realm-picker page's AUTOSTART button already used for a single realm, and
 that `provision`/`activate`'s first-boot cycle already used internally).
-Not yet redeployed to oscar as the actual replacement for
+`realm status [id]` reports live `screen` state (running/not, for one realm
+or every registered one), reading the same `realm_running()` check the
+AUTOSTART button's `GET /status` endpoint uses. Not yet redeployed to oscar
+as the actual replacement for
 `start_all_minecraft_servers.sh`/`stop_all_minecraft_servers.sh` — see
 [redeploy-oscar-scripts.md](redeploy-oscar-scripts.md) and
 [tools/scripts/README.md](../../tools/scripts/README.md).
@@ -80,8 +83,13 @@ screen -dmS <data_dir> ./start.sh
 
 ## Verify
 
-- `screen -ls` no longer lists `<data_dir>` (stopped) or lists it again
-  (restarted).
+- `python -m minecraftmgr realm status <id>` (or with no id, every registered
+  realm) reports live `screen` state — same info the AUTOSTART button's
+  `GET /status` uses, just from the CLI. Must run as `minecraft`; `screen`
+  sessions are per-user, so checking as any other user always looks like
+  nothing is running.
+- Or, manually: `screen -ls` no longer lists `<data_dir>` (stopped) or lists
+  it again (restarted).
 - `GET https://trigger.gamenightbymike.com/status` (or the picker page)
   reflects the new state within a few seconds.
 

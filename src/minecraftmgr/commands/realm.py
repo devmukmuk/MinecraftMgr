@@ -1,9 +1,12 @@
-"""Realm commands: inspect, provision, activate, start, stop.
+"""Realm commands: inspect, provision, activate, start, stop, status.
 
 Meant to run on oscar as the `minecraft` user -- never the `mike`
-automation key, since these start/stop realm processes. `provision`/
-`activate` never touch servers.json or velocity.toml themselves; they print
-the exact snippets needed to wire the realm in from the dev box / Cloudflare
+automation key, since these start/stop realm processes. `status` doesn't
+mutate anything, but `screen` sessions are per-user, so it still has to run
+as `minecraft` to see the realms' actual sessions -- checking as any other
+user looks like nothing is running, even when it is. `provision`/`activate`
+never touch servers.json or velocity.toml themselves; they print the exact
+snippets needed to wire the realm in from the dev box / Cloudflare
 dashboard.
 """
 
@@ -15,6 +18,7 @@ from typing import Optional
 
 import typer
 from rich.console import Console
+from rich.table import Table
 
 from minecraftmgr.config import load_settings
 from minecraftmgr.config.settings import Settings
@@ -34,7 +38,7 @@ from minecraftmgr.services.realm_inspect_service import (
 )
 from minecraftmgr.services.realm_scaffold_service import ScaffoldError, scaffold_realm_dir
 from minecraftmgr.services.registry_service import list_servers
-from minecraftmgr.services.trigger_service import TriggerError, start_realm, stop_realm
+from minecraftmgr.services.trigger_service import TriggerError, realm_running, start_realm, stop_realm
 
 app = typer.Typer(help="Provision or activate a realm's data directory on oscar.")
 console = Console()
@@ -318,3 +322,44 @@ def stop_cmd(
     for server in targets:
         stop_realm(server, settings.data_root)
         console.print(f"[green]Stopped[/green] {server.server_id}")
+
+
+@app.command("status")
+def status_cmd(
+    server_id: Optional[str] = typer.Argument(
+        None, help="Realm id to check. Omit to check every registered realm."
+    ),
+) -> None:
+    """Report which registered realms currently have a running screen session.
+
+    Reads live `screen` state, same as trigger_daemon's GET /status -- not
+    servers.json's `status` field, which only says whether a realm is meant
+    to be active, not whether it's actually running right now.
+    """
+
+    settings = load_settings()
+
+    if server_id:
+        targets = [server for server in list_servers(settings) if server.server_id == server_id]
+        if not targets:
+            console.print(f"[red]Server '{server_id}' not found[/red]")
+            raise typer.Exit(code=1)
+    else:
+        targets = list_servers(settings)
+
+    table = Table()
+    table.add_column("ID")
+    table.add_column("Name")
+    table.add_column("Registry status")
+    table.add_column("Running")
+
+    for server in targets:
+        running = realm_running(server.data_dir)
+        table.add_row(
+            server.server_id,
+            server.name,
+            server.status,
+            "[green]yes[/green]" if running else "[dim]no[/dim]",
+        )
+
+    console.print(table)
