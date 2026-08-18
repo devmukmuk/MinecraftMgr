@@ -1,9 +1,11 @@
 # Epic PROV — Realm Provisioning
 
-Scope: `models/realm_inspection.py`, `services/realm_inspect_service.py`,
-`services/jar_cache_service.py`, `services/realm_scaffold_service.py`,
-`services/provision_service.py`, `services/realm_handoff_service.py`,
-`commands/realm.py`, `tools/templates/`.
+Scope: `models/realm_inspection.py`, `models/start_sh_validation.py`,
+`services/realm_inspect_service.py`, `services/jar_cache_service.py`,
+`services/realm_scaffold_service.py`, `services/realm_validate_service.py`,
+`services/capacity_service.py`, `services/provision_service.py`,
+`services/realm_handoff_service.py`, `services/trigger_service.py`,
+`services/trigger_daemon.py`, `commands/realm.py`, `tools/templates/`.
 
 ## Context
 
@@ -198,6 +200,71 @@ wired into `velocity.toml` (edited via the `mike` key, restarted by hand in
 a `minecraft` shell), and started for real end-to-end through the deployed
 AUTOSTART button on the picker page — confirmed via `ps aux` on oscar, not
 just the page's own status report.
+
+## Capacity cap and on-demand idle eviction (2026-08-18)
+
+Oscar can't safely run every registered realm at once — a real incident
+this same day found `arbor_1_21_10`, `cave_1_21_1`, `poop_1_21_1`, and
+`river_1_21_1` all requesting `-Xmx14G` in their `start.sh` (impossible on
+oscar's 15Gi total RAM, let alone four at once; see `realm validate`, added
+alongside this in a separate PR). The user asked for a hard cap on
+concurrently running realms, with automatic eviction when someone actually
+needs the room. First framing suggested a timer-driven idle reaper —
+corrected during design: *"we shouldn't stop a server just because it's
+idle, [only] because someone had requested another server to be started."*
+That's
+**reactive**, not proactive: nothing ever gets stopped just for sitting
+idle; a realm only gets stopped because starting a *different* realm needed
+the room. No timer, no background worker, no persistent queue — a blocked
+start either evicts one idle realm or fails with a clear message, and the
+human retries.
+
+**`Settings.max_running_servers`** (default `3`, `limits:` section of
+`minecraftmgr.yaml`) — oscar-local like `data_root`, since the right number
+depends on the box's actual RAM.
+
+**`services/capacity_service.py`** — orchestrates existing, already-tested
+`trigger_service` primitives (`realm_running`, `start_realm`, `stop_realm`)
+rather than duplicating any of them:
+- `connected_player_count(port)` / `is_idle(server)` — counts established
+  TCP connections to the realm's own backend port via `ss` (not RCON,
+  disabled on every realm today; not a Minecraft protocol client, same
+  fidelity for "is anyone connected" as parsing a real status-ping
+  response, much less code). Works whether or not the realm sits behind
+  Velocity — Velocity keeps one backend connection open per connected
+  player, so the count is accurate either way.
+- `find_idle_running_realm(candidates, exclude=...)` — first running+idle
+  candidate not in `exclude`.
+- `start_realm_within_capacity(server, all_servers, data_root,
+  max_running=..., exclude_from_eviction=...)` — the cap counts **every**
+  currently-running realm regardless of `servers.json` status (it's about
+  real RAM, not registry semantics — `jitterbug`, inactive but left running
+  from this session's testing, counts toward the 3 same as anything else).
+  At capacity with an idle candidate available, stops it and returns it (so
+  callers can report what happened); at capacity with nothing idle, raises
+  `CapacityError` rather than silently failing or silently doing nothing.
+
+**`exclude_from_eviction`** exists specifically for `realm start --all`:
+starting several realms in one batch shouldn't evict realm B (also a target
+in the same batch) just to start realm A, then need to restart B moments
+later — that's flapping, not progress. `--all` passes its whole target-id
+set as `exclude_from_eviction`, so it can only evict something *outside*
+the batch to make room; if nothing outside the batch is idle, remaining
+targets are skipped with a warning instead of churning.
+
+**Both call sites now go through this**: `commands/realm.py`'s `start_cmd`
+(single id exits 1 on `CapacityError`; `--all` prints a yellow skip warning
+and continues), and `trigger_daemon.py`'s `POST /start/<id>` (`CapacityError`
+→ HTTP `503` with a JSON `error` message the picker page can show directly
+— the AUTOSTART-button feedback the user asked for, no page-side polling
+loop needed). A successful eviction is reported back either way (CLI:
+`Stopped idle X to make room for Y`; HTTP: `{"status": "starting",
+"evicted": "X"}`).
+
+**Deliberately not made capacity-aware**: `provision`/`activate`'s own
+`first_boot_cycle()` start/stop calls — provisioning a new realm is a rare,
+manual, deliberate admin action, not the automated/frequent path this cap
+exists to protect. Tracked as a known gap, not a bug.
 
 ## Open work
 

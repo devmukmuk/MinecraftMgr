@@ -23,6 +23,7 @@ from rich.table import Table
 from minecraftmgr.config import load_settings
 from minecraftmgr.config.settings import Settings
 from minecraftmgr.models.server_entry import ServerEntry
+from minecraftmgr.services.capacity_service import CapacityError, start_realm_within_capacity
 from minecraftmgr.services.jar_cache_service import JarCacheError, ensure_jar_cached
 from minecraftmgr.services.provision_service import (
     ReadinessTimeout,
@@ -38,7 +39,7 @@ from minecraftmgr.services.realm_inspect_service import (
 )
 from minecraftmgr.services.realm_scaffold_service import ScaffoldError, scaffold_realm_dir
 from minecraftmgr.services.registry_service import list_servers
-from minecraftmgr.services.trigger_service import TriggerError, realm_running, start_realm, stop_realm
+from minecraftmgr.services.trigger_service import TriggerError, realm_running, stop_realm
 
 app = typer.Typer(help="Provision or activate a realm's data directory on oscar.")
 console = Console()
@@ -276,6 +277,11 @@ def start_cmd(
 
     Wraps trigger_service.start_realm() -- the same logic the AUTOSTART
     button already uses for a single realm. Run as the `minecraft` user.
+    Capacity-aware: if settings.max_running_servers is already reached, this
+    evicts one idle realm (nothing connected to its port) to make room --
+    see services/capacity_service.py. `--all` never evicts a realm that's
+    also a target in the same batch, to avoid flapping; if nothing outside
+    the batch is idle, remaining targets are skipped with a warning instead.
     """
 
     if bool(server_id) == all_servers:
@@ -284,14 +290,30 @@ def start_cmd(
 
     settings = load_settings()
     targets = _resolve_targets(settings, server_id, all_servers)
+    every_server = list_servers(settings)
+    exclude_from_eviction = {server.server_id for server in targets} if all_servers else set()
 
     failures: list[str] = []
 
     for server in targets:
         try:
-            start_realm(server, settings.data_root)
+            evicted = start_realm_within_capacity(
+                server,
+                every_server,
+                settings.data_root,
+                max_running=settings.max_running_servers,
+                exclude_from_eviction=exclude_from_eviction,
+            )
+            if evicted is not None:
+                console.print(
+                    f"[yellow]Stopped idle[/yellow] {evicted.server_id} to make room for "
+                    f"[green]{server.server_id}[/green]"
+                )
             console.print(f"[green]Started[/green] {server.server_id}")
         except TriggerError as exc:
+            console.print(f"[yellow]Skipped[/yellow] {server.server_id}: {exc}")
+            failures.append(server.server_id)
+        except CapacityError as exc:
             console.print(f"[yellow]Skipped[/yellow] {server.server_id}: {exc}")
             failures.append(server.server_id)
 

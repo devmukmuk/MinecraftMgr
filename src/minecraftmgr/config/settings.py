@@ -39,6 +39,7 @@ class Settings:
     backups_root: Path
     servers_json_path: Path
     metadata: SettingsMetadata
+    max_running_servers: int = 3
 
 
 class ConfigError(Exception):
@@ -178,9 +179,11 @@ def load_settings() -> Settings:
     data = load_config_file(config_path)
 
     paths = data.get("paths", {})
+    limits = data.get("limits", {})
 
     data_root = Path(str(paths.get("data_root", "/opt/mc"))).expanduser()
     backups_root = _resolve_path(data_root, str(paths.get("backups_root", "backups")))
+    max_running_servers = int(limits.get("max_running_servers", 3))
 
     metadata = SettingsMetadata(
         config_path=config_path,
@@ -193,4 +196,5 @@ def load_settings() -> Settings:
         backups_root=backups_root,
         servers_json_path=resolve_servers_json_path(),
         metadata=metadata,
+        max_running_servers=max_running_servers,
     )

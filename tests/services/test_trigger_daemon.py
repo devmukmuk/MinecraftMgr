@@ -14,6 +14,7 @@ import pytest
 from minecraftmgr.config.settings import Settings
 from minecraftmgr.models.server_entry import ServerEntry
 from minecraftmgr.services import trigger_daemon
+from minecraftmgr.services.capacity_service import CapacityError
 from minecraftmgr.services.registry_service import add_server
 from minecraftmgr.services.trigger_service import TriggerError
 
@@ -51,12 +52,17 @@ def running_daemon(
 
     started: list[str] = []
 
-    def fake_start_realm(server: ServerEntry, data_root: Path, **_: object) -> None:
+    def fake_start_realm_within_capacity(
+        server: ServerEntry, all_servers: list[ServerEntry], data_root: Path, **_: object
+    ) -> ServerEntry | None:
         if server.server_id in started:
             raise TriggerError("already running")
         started.append(server.server_id)
+        return None
 
-    monkeypatch.setattr(trigger_daemon, "start_realm", fake_start_realm)
+    monkeypatch.setattr(
+        trigger_daemon, "start_realm_within_capacity", fake_start_realm_within_capacity
+    )
 
     server = trigger_daemon.TriggerHTTPServer(
         ("127.0.0.1", 0), trigger_daemon.TriggerHandler, settings, pin_path
@@ -124,6 +130,79 @@ def test_start_unknown_realm_returns_404(running_daemon: tuple[str, list[str]]) 
         urllib.request.urlopen(req)
 
     assert exc_info.value.code == 404
+
+
+def test_start_at_capacity_returns_503(
+    settings: Settings, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A CapacityError (at cap, nothing idle) maps to 503, not a crash or a silent no-op."""
+
+    add_server(settings, _entry("gravestone"))
+    pin_path = tmp_path / "pin.secret"
+    pin_path.write_text("1234", encoding="utf-8")
+
+    def raise_capacity_error(*args: object, **kwargs: object) -> None:
+        raise CapacityError("3 realms already running and none are idle -- try again shortly")
+
+    monkeypatch.setattr(trigger_daemon, "start_realm_within_capacity", raise_capacity_error)
+
+    server = trigger_daemon.TriggerHTTPServer(
+        ("127.0.0.1", 0), trigger_daemon.TriggerHandler, settings, pin_path
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+
+    try:
+        base_url = f"http://127.0.0.1:{server.server_address[1]}"
+        req = urllib.request.Request(
+            f"{base_url}/start/gravestone", method="POST", headers={"X-Autostart-Pin": "1234"}
+        )
+        with pytest.raises(urllib.error.HTTPError) as exc_info:
+            urllib.request.urlopen(req)
+
+        assert exc_info.value.code == 503
+        body = json.loads(exc_info.value.read())
+        assert "try again shortly" in body["error"]
+    finally:
+        server.shutdown()
+        thread.join(timeout=5)
+
+
+def test_start_reports_evicted_realm_in_response(
+    settings: Settings, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """When starting evicts an idle realm to make room, the response says which one."""
+
+    add_server(settings, _entry("gravestone"))
+    add_server(settings, _entry("jitterbug"))
+    pin_path = tmp_path / "pin.secret"
+    pin_path.write_text("1234", encoding="utf-8")
+
+    def fake_start_with_eviction(
+        server: ServerEntry, all_servers: list[ServerEntry], data_root: Path, **_: object
+    ) -> ServerEntry:
+        return _entry("jitterbug")
+
+    monkeypatch.setattr(trigger_daemon, "start_realm_within_capacity", fake_start_with_eviction)
+
+    server = trigger_daemon.TriggerHTTPServer(
+        ("127.0.0.1", 0), trigger_daemon.TriggerHandler, settings, pin_path
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+
+    try:
+        base_url = f"http://127.0.0.1:{server.server_address[1]}"
+        req = urllib.request.Request(
+            f"{base_url}/start/gravestone", method="POST", headers={"X-Autostart-Pin": "1234"}
+        )
+        with urllib.request.urlopen(req) as res:
+            body = json.loads(res.read())
+
+        assert body == {"status": "starting", "evicted": "jitterbug"}
+    finally:
+        server.shutdown()
+        thread.join(timeout=5)
 
 
 def test_cors_header_present_on_status(running_daemon: tuple[str, list[str]]) -> None:
