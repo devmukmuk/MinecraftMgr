@@ -1,9 +1,12 @@
 #!/bin/bash
-# Imported verbatim from oscar:/opt/mc/Scripts/minecraft_all_in_one_backup_v1.sh
-# on 2026-08-18 — this copy has BASE_DIR already fixed to /opt/mc (the
-# now-stale /opt/scripts/ copy still says /srv/minecraft and was not
-# imported). Nightly all-realms backup, superseded in spirit by
-# `minecraftmgr backup run --all` but still cron'd — see
+# Imported verbatim from oscar:/opt/scripts/minecraft_all_in_one_backup_v1.sh
+# on 2026-08-18 — CORRECTED 2026-08-18 during the redeploy runbook's diff
+# check: this is the actually-cron'd, fixed copy (BASE_DIR=/opt/mc, weekly
+# Sun 3am as `minecraft`, confirmed live via its own log output scanning
+# /opt/mc/*). The copy at /opt/mc/Scripts/minecraft_all_in_one_backup_v1.sh
+# is the stale, unused duplicate (still BASE_DIR=/srv/minecraft) — an
+# earlier version of this comment had the two backwards. Superseded in
+# spirit by `minecraftmgr backup run --all` but still cron'd — see
 # tools/scripts/README.md before retiring it.
 
 ###############################################################################
