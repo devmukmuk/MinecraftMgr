@@ -1,9 +1,10 @@
-"""Realm provisioning commands: inspect, provision, activate.
+"""Realm commands: inspect, provision, activate, start, stop.
 
 Meant to run on oscar as the `minecraft` user -- never the `mike`
-automation key, since these start/stop realm processes. They never touch
-servers.json or velocity.toml themselves; they print the exact snippets
-needed to wire the realm in from the dev box / Cloudflare dashboard.
+automation key, since these start/stop realm processes. `provision`/
+`activate` never touch servers.json or velocity.toml themselves; they print
+the exact snippets needed to wire the realm in from the dev box / Cloudflare
+dashboard.
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ import typer
 from rich.console import Console
 
 from minecraftmgr.config import load_settings
+from minecraftmgr.config.settings import Settings
 from minecraftmgr.models.server_entry import ServerEntry
 from minecraftmgr.services.jar_cache_service import JarCacheError, ensure_jar_cached
 from minecraftmgr.services.provision_service import (
@@ -31,6 +33,8 @@ from minecraftmgr.services.realm_inspect_service import (
     require_velocity_compatible,
 )
 from minecraftmgr.services.realm_scaffold_service import ScaffoldError, scaffold_realm_dir
+from minecraftmgr.services.registry_service import list_servers
+from minecraftmgr.services.trigger_service import TriggerError, start_realm, stop_realm
 
 app = typer.Typer(help="Provision or activate a realm's data directory on oscar.")
 console = Console()
@@ -242,3 +246,75 @@ def activate_cmd(
     console.print("[green]Velocity trust configured.[/green]")
     console.print()
     console.print(render_handoff(entry, backend_port=resolved_port))
+
+
+def _resolve_targets(settings: Settings, server_id: Optional[str], all_servers: bool) -> list[ServerEntry]:
+    if all_servers:
+        return list_servers(settings, active_only=True)
+
+    targets = [server for server in list_servers(settings) if server.server_id == server_id]
+
+    if not targets:
+        console.print(f"[red]Server '{server_id}' not found[/red]")
+        raise typer.Exit(code=1)
+
+    return targets
+
+
+@app.command("start")
+def start_cmd(
+    server_id: Optional[str] = typer.Argument(
+        None, help="Realm id to start. Omit with --all to start every active realm."
+    ),
+    all_servers: bool = typer.Option(False, "--all", help="Start every active realm in the registry"),
+) -> None:
+    """Start a realm's screen session, or every active realm with --all.
+
+    Wraps trigger_service.start_realm() -- the same logic the AUTOSTART
+    button already uses for a single realm. Run as the `minecraft` user.
+    """
+
+    if bool(server_id) == all_servers:
+        console.print("[red]Pass exactly one of a server id or --all[/red]")
+        raise typer.Exit(code=1)
+
+    settings = load_settings()
+    targets = _resolve_targets(settings, server_id, all_servers)
+
+    failures: list[str] = []
+
+    for server in targets:
+        try:
+            start_realm(server, settings.data_root)
+            console.print(f"[green]Started[/green] {server.server_id}")
+        except TriggerError as exc:
+            console.print(f"[yellow]Skipped[/yellow] {server.server_id}: {exc}")
+            failures.append(server.server_id)
+
+    if failures and not all_servers:
+        raise typer.Exit(code=1)
+
+
+@app.command("stop")
+def stop_cmd(
+    server_id: Optional[str] = typer.Argument(
+        None, help="Realm id to stop. Omit with --all to stop every active realm."
+    ),
+    all_servers: bool = typer.Option(False, "--all", help="Stop every active realm in the registry"),
+) -> None:
+    """Stop a realm's screen session (graceful, falling back to a kill), or every active realm with --all.
+
+    Wraps trigger_service.stop_realm() -- already used internally by
+    provision/activate's first-boot cycle. Run as the `minecraft` user.
+    """
+
+    if bool(server_id) == all_servers:
+        console.print("[red]Pass exactly one of a server id or --all[/red]")
+        raise typer.Exit(code=1)
+
+    settings = load_settings()
+    targets = _resolve_targets(settings, server_id, all_servers)
+
+    for server in targets:
+        stop_realm(server, settings.data_root)
+        console.print(f"[green]Stopped[/green] {server.server_id}")

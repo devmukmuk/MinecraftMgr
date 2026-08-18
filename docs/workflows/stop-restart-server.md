@@ -1,12 +1,14 @@
 # Stop / restart a realm
 
-**Automation status:** Partial. **Starting** is fully automated (the
-realm-picker page's AUTOSTART button, or `trigger_service.start_realm()`
-underneath it). **Stopping** has working, tested logic
-(`trigger_service.stop_realm()`) but no CLI command or HTTP endpoint exposes
-it yet — it's currently only called internally by `provision`/`activate`'s
-first-boot cycle. Proposed as `realm stop <id>` in
-[PROV-design.md](../epics/PROV-design.md#future-work-modifying-an-already-active-realm).
+**Automation status:** Full — one command each, as of 2026-08-18.
+`minecraftmgr realm start <id>`/`--all` and `realm stop <id>`/`--all` wrap
+`trigger_service.start_realm()`/`stop_realm()` (the same logic the
+realm-picker page's AUTOSTART button already used for a single realm, and
+that `provision`/`activate`'s first-boot cycle already used internally).
+Not yet redeployed to oscar as the actual replacement for
+`start_all_minecraft_servers.sh`/`stop_all_minecraft_servers.sh` — see
+[redeploy-oscar-scripts.md](redeploy-oscar-scripts.md) and
+[tools/scripts/README.md](../../tools/scripts/README.md).
 
 ## When to use
 
@@ -15,10 +17,37 @@ Any workflow that says "stop the realm first" — [change-port](change-port.md),
 directly. Also useful on its own to free up memory on oscar for a realm
 nobody's using, without deregistering it.
 
-## Steps (manual, today)
+## Steps
 
 As the `minecraft` user on oscar — **only `minecraft` may do this**, never
 the `mike` automation key:
+
+```bash
+sudo -iu minecraft
+cd /srv/mc
+python -m minecraftmgr realm stop <id>
+# or, for every active realm:
+python -m minecraftmgr realm stop --all
+```
+
+**To restart**, either click AUTOSTART on the realm-picker page, or:
+
+```bash
+python -m minecraftmgr realm start <id>
+# or:
+python -m minecraftmgr realm start --all
+```
+
+`realm start` refuses (rather than racing a second process) if a screen
+session for that realm is already up. `realm stop` sends the in-game `stop`
+console command and polls for up to 10 seconds, falling back to
+`pgrep`+`kill` if the session is still there — `screen -X stuff` doesn't
+always reach the console reliably (hit twice before, converting jitterbug).
+
+### Manual fallback
+
+If the CLI isn't available (or for a one-off outside the registry), the
+underlying steps are the same ones `stop_realm()`/`start_realm()` automate:
 
 ```bash
 sudo -iu minecraft
@@ -34,18 +63,15 @@ stop
 ```
 
 Wait for the world to save and the process to exit — the screen session
-closes on its own once it does. If it's still there after ~10 seconds
-(this has happened twice before — `screen -X stuff` doesn't always reach the
-console reliably), detach with `Ctrl+A d` and fall back to killing it
-directly:
+closes on its own once it does. If it's still there after ~10 seconds,
+detach with `Ctrl+A d` and fall back to killing it directly:
 
 ```bash
 pgrep -f <data_dir>
 kill <pid>
 ```
 
-**To restart**, either click AUTOSTART on the realm-picker page, or from the
-`minecraft` shell:
+To start manually:
 
 ```bash
 cd /opt/mc/<data_dir>

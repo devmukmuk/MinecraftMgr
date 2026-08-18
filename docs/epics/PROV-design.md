@@ -254,9 +254,10 @@ for automating each one, not yet built:
     immediately; a friendlier `realm whitelist add/remove <id> <player>`
     could follow later.
   - **Rules**: server-properties-level settings (difficulty, pvp,
-    spawn-protection) still need stop → edit `server.properties` → restart.
-    In-world `/gamerule` changes (keepInventory, mobGriefing, etc.) go
-    through the same console injection, live, no restart.
+    spawn-protection) still need stop (now `realm stop <id>`, see below) →
+    edit `server.properties` → restart (`realm start <id>`). In-world
+    `/gamerule` changes (keepInventory, mobGriefing, etc.) go through the
+    same console injection, live, no restart.
 - **Jar version update**: no command exists yet. Shape: stop the realm
   (`stop_realm`, already built) → `ensure_jar_cached()` for the new version
   (already validates Paper via the manifest check from #33) → back up the
