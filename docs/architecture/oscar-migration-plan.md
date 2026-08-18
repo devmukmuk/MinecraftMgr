@@ -711,6 +711,18 @@ them as manually-set values in the rendered `/opt/mc/<data_dir>/start.sh`
 (don't regenerate over hand-tuned memory settings without a real field to
 drive it — see [Out of scope](#out-of-scope)).
 
+**`minecraftmgr realm validate <id>|--all [--fix]`** (2026-08-18, see
+[PROV-design.md](../epics/PROV-design.md#realm-validate-2026-08-18)) is the
+tool this section anticipated but never built: it checks a realm's
+`start.sh` against this exact template (the IPv4 flag, the port) and
+`--fix` regenerates it, preserving whatever `MEM_MIN`/`MEM_MAX` the file
+already has rather than guessing — same "don't regenerate over hand-tuned
+memory settings" rule as above, just automated for everything except the
+memory values themselves. Found live via real use: `arbor_1_21_10`,
+`cave_1_21_1`, `poop_1_21_1`, and `river_1_21_1` all had `MEM_MAX="14G"`
+(oscar only has 15Gi total) and none had the IPv4 flag — see
+[DEP.md](../epics/DEP.md)'s open work.
+
 The template's `java` invocation also needs
 `-Djava.net.preferIPv4Stack=true` (confirmed necessary live — see
 [Execution log](#execution-log-verified-live-aug-15-16-2026)):
@@ -838,6 +850,15 @@ migrated realm). Set `status` on the 5 that were group-restricted
 to `inactive` via `minecraftmgr server update <id> --status inactive` —
 **confirm which are actually retired vs. just currently stopped** before
 setting that; the permission bits are a signal, not a guarantee.
+
+**This never actually happened** — as of 2026-08-18, `cave` (`cave_1_21_1`),
+`poop` (`poop_1_21_1`), and `river` (`river_1_21_1`) are all registered
+`active`, not `inactive` as this section recommended. Whether that's a
+deliberate reversal or this step was simply skipped isn't confirmed. Worth
+noting: these are exactly 3 of the 4 realms found live with the broken
+`-Xmx14G`/missing-IPv4-flag `start.sh` (see the note above and
+[DEP.md](../epics/DEP.md)'s open work) — plausible they were never really
+production-ready and got left `active` by oversight rather than intent.
 
 ### 3. Port the scripts
 

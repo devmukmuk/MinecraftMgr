@@ -36,7 +36,14 @@ class ScaffoldError(Exception):
     """Raised when a realm directory can't be safely scaffolded."""
 
 
-def _render_start_sh(*, name: str, port: int, mem_min: str, mem_max: str, java_bin: str) -> str:
+def render_start_sh(*, name: str, port: int, mem_min: str, mem_max: str, java_bin: str = "java") -> str:
+    """Render tools/templates/start.sh.template with the given values.
+
+    Public: reused by realm_validate_service to regenerate an *existing*
+    realm's start.sh (not just brand-new ones scaffolded here), so there's
+    exactly one place that knows the template's placeholder names.
+    """
+
     template = (_TEMPLATES_DIR / "start.sh.template").read_text(encoding="utf-8")
 
     return (
@@ -90,7 +97,7 @@ def scaffold_realm_dir(
 
     start_sh_path = realm_dir / "start.sh"
     start_sh_path.write_text(
-        _render_start_sh(
+        render_start_sh(
             name=data_dir, port=port, mem_min=mem_min, mem_max=mem_max, java_bin=java_bin
         ),
         encoding="utf-8",
