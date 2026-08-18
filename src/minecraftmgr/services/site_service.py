@@ -15,8 +15,8 @@ from minecraftmgr.constants import (
 from minecraftmgr.models.server_entry import ServerEntry
 
 _STATUS_LABELS = {
-    "active": ("active", "Online"),
-    "inactive": ("inactive", "Test realm"),
+    "active": ("active", "ACTIVE"),
+    "inactive": ("inactive", "INACTIVE"),
 }
 
 _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
@@ -160,10 +160,12 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
     display: flex;
     flex-direction: column;
     gap: 0.7rem;
-    transition: transform 160ms ease, box-shadow 160ms ease;
+    transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, border-color 160ms ease;
   }}
 
   .card:hover {{ transform: translateY(-2px); }}
+
+  .card.running {{ background: var(--good-bg); border-color: var(--good); }}
 
   .card-top {{
     display: flex;
@@ -206,11 +208,13 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
   }}
 
   .status.active {{ color: var(--good); background: var(--good-bg); }}
-  .status.active .dot {{ animation: flicker 2.6s ease-in-out infinite; }}
   .status.inactive {{ color: var(--muted); background: var(--muted-bg); }}
+  .status.running {{ color: var(--good); background: var(--surface-raised); }}
+  .status.running .dot {{ animation: flicker 2.6s ease-in-out infinite; }}
+  .status.stopped {{ color: var(--muted); background: var(--surface-raised); }}
 
   @media (prefers-reduced-motion: reduce) {{
-    .status.active .dot {{ animation: none; }}
+    .status.running .dot {{ animation: none; }}
   }}
 
   @keyframes flicker {{
@@ -265,15 +269,12 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
   .live-row {{
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 0.5rem;
     font-size: 0.78rem;
   }}
 
   .live-row[hidden] {{ display: none; }}
-
-  .live-status {{ color: var(--ink-dim); }}
-  .live-status[data-state="running"] {{ color: var(--good); font-weight: 600; }}
 
   .autostart-btn {{
     font-family: inherit;
@@ -444,15 +445,26 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
       if (!res.ok) {{ throw new Error("bad status"); }}
       return res.json();
     }}).then(function (statuses) {{
+      document.querySelectorAll(".status[data-realm]").forEach(function (badge) {{
+        var realm = badge.getAttribute("data-realm");
+        var state = statuses[realm];
+        if (!state) {{ return; }}
+        var registry = badge.getAttribute("data-registry") === "active" ? "ACTIVE" : "INACTIVE";
+        var running = state === "running";
+        badge.classList.remove("active", "inactive");
+        badge.classList.add(running ? "running" : "stopped");
+        badge.querySelector(".status-label").textContent = registry + "-" + (running ? "Running" : "Stopped");
+        var card = badge.closest(".card");
+        if (card) {{
+          card.classList.toggle("running", running);
+        }}
+      }});
       document.querySelectorAll(".live-row").forEach(function (row) {{
         var realm = row.getAttribute("data-realm");
         var state = statuses[realm];
         if (!state) {{ return; }}
         row.hidden = false;
-        var label = row.querySelector(".live-status");
         var btn = row.querySelector(".autostart-btn");
-        label.textContent = state === "running" ? "Running" : "Stopped";
-        label.setAttribute("data-state", state);
         btn.hidden = state !== "stopped";
       }});
     }}).catch(function () {{
@@ -495,7 +507,7 @@ _CARD_TEMPLATE = """      <article class="card">
             <p class="realm-name">{name}</p>
             <span class="version-badge">Minecraft {version} &middot; {server_type}</span>
           </div>
-          <span class="status {status_class}"><span class="dot"></span>{status_label}</span>
+          <span class="status {status_class}" data-realm="{server_id}" data-registry="{status_class}"><span class="dot"></span><span class="status-label">{status_label}</span></span>
         </div>
         <div class="addr-row">
           <code>{address}</code>
@@ -510,7 +522,6 @@ _CARD_TEMPLATE = """      <article class="card">
           </ol>
         </details>
         <div class="live-row" data-realm="{server_id}" hidden>
-          <span class="live-status">Checking&hellip;</span>
           <button class="autostart-btn" data-realm="{server_id}" hidden>Autostart</button>
         </div>
       </article>"""

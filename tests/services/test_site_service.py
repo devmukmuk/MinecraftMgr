@@ -42,7 +42,8 @@ def test_render_site_includes_each_realm() -> None:
 
 
 def test_render_site_maps_status_to_label() -> None:
-    """Active realms show 'Online', inactive realms show 'Test realm'."""
+    """Active realms show 'ACTIVE', inactive realms show 'INACTIVE' -- the live-fetched
+    running/stopped state gets appended client-side once the trigger daemon responds."""
 
     html = render_site(
         [
@@ -51,8 +52,17 @@ def test_render_site_maps_status_to_label() -> None:
         ]
     )
 
-    assert "Online" in html
-    assert "Test realm" in html
+    assert "ACTIVE" in html
+    assert "INACTIVE" in html
+
+
+def test_render_site_status_badge_carries_realm_id_for_live_updates() -> None:
+    """The status badge (not just the now-removed live-row) carries data-realm, so the
+    client-side refreshStatus() can rewrite it to ACTIVE-Running/-Stopped in place."""
+
+    html = render_site([_entry("gravestone", status="active")])
+
+    assert 'class="status active" data-realm="gravestone" data-registry="active"' in html
 
 
 def test_render_site_links_to_the_screenshot_gallery() -> None:

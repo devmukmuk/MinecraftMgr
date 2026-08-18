@@ -139,10 +139,12 @@
     display: flex;
     flex-direction: column;
     gap: 0.7rem;
-    transition: transform 160ms ease, box-shadow 160ms ease;
+    transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, border-color 160ms ease;
   }
 
   .card:hover { transform: translateY(-2px); }
+
+  .card.running { background: var(--good-bg); border-color: var(--good); }
 
   .card-top {
     display: flex;
@@ -185,11 +187,13 @@
   }
 
   .status.active { color: var(--good); background: var(--good-bg); }
-  .status.active .dot { animation: flicker 2.6s ease-in-out infinite; }
   .status.inactive { color: var(--muted); background: var(--muted-bg); }
+  .status.running { color: var(--good); background: var(--surface-raised); }
+  .status.running .dot { animation: flicker 2.6s ease-in-out infinite; }
+  .status.stopped { color: var(--muted); background: var(--surface-raised); }
 
   @media (prefers-reduced-motion: reduce) {
-    .status.active .dot { animation: none; }
+    .status.running .dot { animation: none; }
   }
 
   @keyframes flicker {
@@ -244,15 +248,12 @@
   .live-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 0.5rem;
     font-size: 0.78rem;
   }
 
   .live-row[hidden] { display: none; }
-
-  .live-status { color: var(--ink-dim); }
-  .live-status[data-state="running"] { color: var(--good); font-weight: 600; }
 
   .autostart-btn {
     font-family: inherit;
@@ -368,7 +369,7 @@
             <p class="realm-name">Arbor</p>
             <span class="version-badge">Minecraft 1.21.10 &middot; Paper</span>
           </div>
-          <span class="status inactive"><span class="dot"></span>Test realm</span>
+          <span class="status inactive" data-realm="arbor" data-registry="inactive"><span class="dot"></span><span class="status-label">INACTIVE</span></span>
         </div>
         <div class="addr-row">
           <code>arbor.gamenightbymike.com</code>
@@ -383,7 +384,6 @@
           </ol>
         </details>
         <div class="live-row" data-realm="arbor" hidden>
-          <span class="live-status">Checking&hellip;</span>
           <button class="autostart-btn" data-realm="arbor" hidden>Autostart</button>
         </div>
       </article>
@@ -393,7 +393,7 @@
             <p class="realm-name">Cave</p>
             <span class="version-badge">Minecraft 1.21.1 &middot; Paper</span>
           </div>
-          <span class="status inactive"><span class="dot"></span>Test realm</span>
+          <span class="status inactive" data-realm="cave" data-registry="inactive"><span class="dot"></span><span class="status-label">INACTIVE</span></span>
         </div>
         <div class="addr-row">
           <code>cave.gamenightbymike.com</code>
@@ -408,7 +408,6 @@
           </ol>
         </details>
         <div class="live-row" data-realm="cave" hidden>
-          <span class="live-status">Checking&hellip;</span>
           <button class="autostart-btn" data-realm="cave" hidden>Autostart</button>
         </div>
       </article>
@@ -418,7 +417,7 @@
             <p class="realm-name">Gatorland</p>
             <span class="version-badge">Minecraft 26.2 &middot; Paper</span>
           </div>
-          <span class="status active"><span class="dot"></span>Online</span>
+          <span class="status active" data-realm="gatorland" data-registry="active"><span class="dot"></span><span class="status-label">ACTIVE</span></span>
         </div>
         <div class="addr-row">
           <code>gatorland.gamenightbymike.com</code>
@@ -433,7 +432,6 @@
           </ol>
         </details>
         <div class="live-row" data-realm="gatorland" hidden>
-          <span class="live-status">Checking&hellip;</span>
           <button class="autostart-btn" data-realm="gatorland" hidden>Autostart</button>
         </div>
       </article>
@@ -443,7 +441,7 @@
             <p class="realm-name">Gravestone</p>
             <span class="version-badge">Minecraft 26.1.2 &middot; Paper</span>
           </div>
-          <span class="status active"><span class="dot"></span>Online</span>
+          <span class="status active" data-realm="gravestone" data-registry="active"><span class="dot"></span><span class="status-label">ACTIVE</span></span>
         </div>
         <div class="addr-row">
           <code>gravestone.gamenightbymike.com</code>
@@ -458,7 +456,6 @@
           </ol>
         </details>
         <div class="live-row" data-realm="gravestone" hidden>
-          <span class="live-status">Checking&hellip;</span>
           <button class="autostart-btn" data-realm="gravestone" hidden>Autostart</button>
         </div>
       </article>
@@ -468,7 +465,7 @@
             <p class="realm-name">Jitterbug</p>
             <span class="version-badge">Minecraft 1.21.1 &middot; Paper</span>
           </div>
-          <span class="status inactive"><span class="dot"></span>Test realm</span>
+          <span class="status inactive" data-realm="jitterbug" data-registry="inactive"><span class="dot"></span><span class="status-label">INACTIVE</span></span>
         </div>
         <div class="addr-row">
           <code>jitterbug.gamenightbymike.com</code>
@@ -483,7 +480,6 @@
           </ol>
         </details>
         <div class="live-row" data-realm="jitterbug" hidden>
-          <span class="live-status">Checking&hellip;</span>
           <button class="autostart-btn" data-realm="jitterbug" hidden>Autostart</button>
         </div>
       </article>
@@ -493,7 +489,7 @@
             <p class="realm-name">Poop</p>
             <span class="version-badge">Minecraft 1.21.1 &middot; Paper</span>
           </div>
-          <span class="status inactive"><span class="dot"></span>Test realm</span>
+          <span class="status inactive" data-realm="poop" data-registry="inactive"><span class="dot"></span><span class="status-label">INACTIVE</span></span>
         </div>
         <div class="addr-row">
           <code>poop.gamenightbymike.com</code>
@@ -508,7 +504,6 @@
           </ol>
         </details>
         <div class="live-row" data-realm="poop" hidden>
-          <span class="live-status">Checking&hellip;</span>
           <button class="autostart-btn" data-realm="poop" hidden>Autostart</button>
         </div>
       </article>
@@ -518,7 +513,7 @@
             <p class="realm-name">River</p>
             <span class="version-badge">Minecraft 1.21.1 &middot; Paper</span>
           </div>
-          <span class="status inactive"><span class="dot"></span>Test realm</span>
+          <span class="status inactive" data-realm="river" data-registry="inactive"><span class="dot"></span><span class="status-label">INACTIVE</span></span>
         </div>
         <div class="addr-row">
           <code>river.gamenightbymike.com</code>
@@ -533,7 +528,6 @@
           </ol>
         </details>
         <div class="live-row" data-realm="river" hidden>
-          <span class="live-status">Checking&hellip;</span>
           <button class="autostart-btn" data-realm="river" hidden>Autostart</button>
         </div>
       </article>
@@ -543,7 +537,7 @@
             <p class="realm-name">Test Realm</p>
             <span class="version-badge">Minecraft 26.2 &middot; Paper</span>
           </div>
-          <span class="status inactive"><span class="dot"></span>Test realm</span>
+          <span class="status inactive" data-realm="testrealm" data-registry="inactive"><span class="dot"></span><span class="status-label">INACTIVE</span></span>
         </div>
         <div class="addr-row">
           <code>testrealm.gamenightbymike.com</code>
@@ -558,7 +552,6 @@
           </ol>
         </details>
         <div class="live-row" data-realm="testrealm" hidden>
-          <span class="live-status">Checking&hellip;</span>
           <button class="autostart-btn" data-realm="testrealm" hidden>Autostart</button>
         </div>
       </article>
@@ -622,15 +615,26 @@
       if (!res.ok) { throw new Error("bad status"); }
       return res.json();
     }).then(function (statuses) {
+      document.querySelectorAll(".status[data-realm]").forEach(function (badge) {
+        var realm = badge.getAttribute("data-realm");
+        var state = statuses[realm];
+        if (!state) { return; }
+        var registry = badge.getAttribute("data-registry") === "active" ? "ACTIVE" : "INACTIVE";
+        var running = state === "running";
+        badge.classList.remove("active", "inactive");
+        badge.classList.add(running ? "running" : "stopped");
+        badge.querySelector(".status-label").textContent = registry + "-" + (running ? "Running" : "Stopped");
+        var card = badge.closest(".card");
+        if (card) {
+          card.classList.toggle("running", running);
+        }
+      });
       document.querySelectorAll(".live-row").forEach(function (row) {
         var realm = row.getAttribute("data-realm");
         var state = statuses[realm];
         if (!state) { return; }
         row.hidden = false;
-        var label = row.querySelector(".live-status");
         var btn = row.querySelector(".autostart-btn");
-        label.textContent = state === "running" ? "Running" : "Stopped";
-        label.setAttribute("data-state", state);
         btn.hidden = state !== "stopped";
       });
     }).catch(function () {
