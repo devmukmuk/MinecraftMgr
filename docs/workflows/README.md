@@ -53,7 +53,7 @@ checkout can't push.
 |---|---|---|
 | [Change a realm's name](change-name.md) | Full — one command | |
 | [Change a realm's port](change-port.md) | None | Touches 3 files across 2 machines |
-| [Stop / restart a realm](stop-restart-server.md) | Partial — stop logic exists, no CLI wrapper yet | Start is automated (AUTOSTART button / `trigger serve`) |
+| [Stop / restart a realm](stop-restart-server.md) | Full — `realm start`/`realm stop` (2026-08-18) | Not yet redeployed to oscar in place of the old `start_all`/`stop_all` scripts |
 | [Back up a realm](backup-realm.md) | Full — one command | |
 | [Restore a realm from backup](restore-from-backup.md) | None | |
 | [Update a realm's jar version](update-jar-version.md) | None | |
@@ -80,13 +80,16 @@ The plan is to pick these off individually rather than build a big change-realm
 feature at once — same reasoning as `PROV`'s "Future work" section. Good
 first candidates, roughly in order of how self-contained they are:
 
-1. **`realm console <id> "<command>"`** — the `send_console_command` primitive
+1. ~~**`realm stop <id>`**~~ — **done (2026-08-18)**, along with `realm start
+   <id>`/`--all` for symmetry. Both are thin wrappers around
+   `trigger_service.start_realm()`/`stop_realm()`, already written and
+   tested. Superseded `tools/scripts/start_all_minecraft_servers.sh` and
+   `stop_all_minecraft_servers.sh` — see
+   [tools/scripts/README.md](../../tools/scripts/README.md).
+2. **`realm console <id> "<command>"`** — the `send_console_command` primitive
    PROV-design.md already proposes. Unlocks whitelist/ops/gamerule changes
    live, with no restart, and is a small wrapper around the same
    `screen -X stuff` mechanism `stop_realm()` already uses.
-2. **`realm stop <id>`** — `trigger_service.stop_realm()` is already written,
-   tested, and used internally by `provision`/`activate`'s first-boot cycle.
-   It just has no CLI command or HTTP endpoint of its own yet.
 3. **`realm audit-ports`** — read-only, no state mutation, but needs care
    since it has to scan real folders on oscar, not just `servers.json`.
 4. Jar version update, port change — bigger, touch multiple files/machines,
