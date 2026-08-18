@@ -1,4 +1,5 @@
 <title>Game Night by Mike</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -126,7 +127,7 @@
 
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    grid-template-columns: 1fr;
     gap: 1rem;
   }
 
@@ -148,9 +149,9 @@
 
   .card-top {
     display: flex;
+    flex-direction: column;
     align-items: flex-start;
-    justify-content: space-between;
-    gap: 0.6rem;
+    gap: 0.5rem;
   }
 
   .realm-name {
@@ -365,11 +366,11 @@
     <div class="grid">
       <article class="card">
         <div class="card-top">
+          <span class="status inactive" data-realm="arbor" data-registry="inactive"><span class="dot"></span><span class="status-label">INACTIVE</span></span>
           <div>
             <p class="realm-name">Arbor</p>
             <span class="version-badge">Minecraft 1.21.10 &middot; Paper</span>
           </div>
-          <span class="status inactive" data-realm="arbor" data-registry="inactive"><span class="dot"></span><span class="status-label">INACTIVE</span></span>
         </div>
         <div class="addr-row">
           <code>arbor.gamenightbymike.com</code>
@@ -389,11 +390,11 @@
       </article>
       <article class="card">
         <div class="card-top">
+          <span class="status inactive" data-realm="cave" data-registry="inactive"><span class="dot"></span><span class="status-label">INACTIVE</span></span>
           <div>
             <p class="realm-name">Cave</p>
             <span class="version-badge">Minecraft 1.21.1 &middot; Paper</span>
           </div>
-          <span class="status inactive" data-realm="cave" data-registry="inactive"><span class="dot"></span><span class="status-label">INACTIVE</span></span>
         </div>
         <div class="addr-row">
           <code>cave.gamenightbymike.com</code>
@@ -413,11 +414,11 @@
       </article>
       <article class="card">
         <div class="card-top">
+          <span class="status active" data-realm="gatorland" data-registry="active"><span class="dot"></span><span class="status-label">ACTIVE</span></span>
           <div>
             <p class="realm-name">Gatorland</p>
             <span class="version-badge">Minecraft 26.2 &middot; Paper</span>
           </div>
-          <span class="status active" data-realm="gatorland" data-registry="active"><span class="dot"></span><span class="status-label">ACTIVE</span></span>
         </div>
         <div class="addr-row">
           <code>gatorland.gamenightbymike.com</code>
@@ -437,11 +438,11 @@
       </article>
       <article class="card">
         <div class="card-top">
+          <span class="status active" data-realm="gravestone" data-registry="active"><span class="dot"></span><span class="status-label">ACTIVE</span></span>
           <div>
             <p class="realm-name">Gravestone</p>
             <span class="version-badge">Minecraft 26.1.2 &middot; Paper</span>
           </div>
-          <span class="status active" data-realm="gravestone" data-registry="active"><span class="dot"></span><span class="status-label">ACTIVE</span></span>
         </div>
         <div class="addr-row">
           <code>gravestone.gamenightbymike.com</code>
@@ -461,11 +462,11 @@
       </article>
       <article class="card">
         <div class="card-top">
+          <span class="status inactive" data-realm="jitterbug" data-registry="inactive"><span class="dot"></span><span class="status-label">INACTIVE</span></span>
           <div>
             <p class="realm-name">Jitterbug</p>
             <span class="version-badge">Minecraft 1.21.1 &middot; Paper</span>
           </div>
-          <span class="status inactive" data-realm="jitterbug" data-registry="inactive"><span class="dot"></span><span class="status-label">INACTIVE</span></span>
         </div>
         <div class="addr-row">
           <code>jitterbug.gamenightbymike.com</code>
@@ -485,11 +486,11 @@
       </article>
       <article class="card">
         <div class="card-top">
+          <span class="status inactive" data-realm="poop" data-registry="inactive"><span class="dot"></span><span class="status-label">INACTIVE</span></span>
           <div>
             <p class="realm-name">Poop</p>
             <span class="version-badge">Minecraft 1.21.1 &middot; Paper</span>
           </div>
-          <span class="status inactive" data-realm="poop" data-registry="inactive"><span class="dot"></span><span class="status-label">INACTIVE</span></span>
         </div>
         <div class="addr-row">
           <code>poop.gamenightbymike.com</code>
@@ -509,11 +510,11 @@
       </article>
       <article class="card">
         <div class="card-top">
+          <span class="status inactive" data-realm="river" data-registry="inactive"><span class="dot"></span><span class="status-label">INACTIVE</span></span>
           <div>
             <p class="realm-name">River</p>
             <span class="version-badge">Minecraft 1.21.1 &middot; Paper</span>
           </div>
-          <span class="status inactive" data-realm="river" data-registry="inactive"><span class="dot"></span><span class="status-label">INACTIVE</span></span>
         </div>
         <div class="addr-row">
           <code>river.gamenightbymike.com</code>
@@ -533,11 +534,11 @@
       </article>
       <article class="card">
         <div class="card-top">
+          <span class="status inactive" data-realm="testrealm" data-registry="inactive"><span class="dot"></span><span class="status-label">INACTIVE</span></span>
           <div>
             <p class="realm-name">Test Realm</p>
             <span class="version-badge">Minecraft 26.2 &middot; Paper</span>
           </div>
-          <span class="status inactive" data-realm="testrealm" data-registry="inactive"><span class="dot"></span><span class="status-label">INACTIVE</span></span>
         </div>
         <div class="addr-row">
           <code>testrealm.gamenightbymike.com</code>
