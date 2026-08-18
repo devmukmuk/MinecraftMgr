@@ -14,13 +14,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from minecraftmgr.config.settings import Settings
+from minecraftmgr.services.capacity_service import CapacityError, start_realm_within_capacity
 from minecraftmgr.services.registry_service import list_servers
-from minecraftmgr.services.trigger_service import (
-    TriggerError,
-    realm_running,
-    start_realm,
-    verify_pin,
-)
+from minecraftmgr.services.trigger_service import TriggerError, realm_running, verify_pin
 
 
 class TriggerHTTPServer(ThreadingHTTPServer):
@@ -81,7 +77,8 @@ class TriggerHandler(BaseHTTPRequestHandler):
             self._json(403, {"error": "invalid pin"})
             return
 
-        servers = {server.server_id: server for server in list_servers(self.server.mgr_settings)}
+        all_servers = list_servers(self.server.mgr_settings)
+        servers = {server.server_id: server for server in all_servers}
         server = servers.get(realm_id)
 
         if server is None:
@@ -89,12 +86,24 @@ class TriggerHandler(BaseHTTPRequestHandler):
             return
 
         try:
-            start_realm(server, self.server.mgr_settings.data_root)
+            evicted = start_realm_within_capacity(
+                server,
+                all_servers,
+                self.server.mgr_settings.data_root,
+                max_running=self.server.mgr_settings.max_running_servers,
+            )
         except TriggerError as exc:
             self._json(409, {"error": str(exc)})
             return
+        except CapacityError as exc:
+            self._json(503, {"error": str(exc)})
+            return
 
-        self._json(200, {"status": "starting"})
+        payload = {"status": "starting"}
+        if evicted is not None:
+            payload["evicted"] = evicted.server_id
+
+        self._json(200, payload)
 
     def log_message(self, format: str, *args: object) -> None:
         return

@@ -13,6 +13,20 @@ as the actual replacement for
 [redeploy-oscar-scripts.md](redeploy-oscar-scripts.md) and
 [tools/scripts/README.md](../../tools/scripts/README.md).
 
+## Capacity cap (2026-08-18)
+
+`realm start` (single id, `--all`, and the AUTOSTART button) refuses to
+exceed `Settings.max_running_servers` (default 3 — oscar only has 15Gi RAM,
+see [PROV-design.md](../epics/PROV-design.md#realm-validate-2026-08-18)'s
+`-Xmx14G` incident). At capacity, it looks for a currently-running realm
+with nobody connected and stops that one to make room; if every running
+realm has someone connected, the start is refused with a "N realms already
+running, none idle — try again shortly" message rather than exceeding the
+cap or silently doing nothing. This is reactive, not scheduled — nothing
+ever gets stopped just for being idle; only a blocked start triggers an
+eviction. See [PROV-design.md](../epics/PROV-design.md#capacity-cap-and-on-demand-idle-eviction-2026-08-18)
+for the full design.
+
 ## When to use
 
 Any workflow that says "stop the realm first" — [change-port](change-port.md),

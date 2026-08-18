@@ -1,7 +1,7 @@
 {
   "arbor": {
     "name": "Arbor",
-    "status": "active",
+    "status": "inactive",
     "port": 26124,
     "minecraft_version": "1.21.10",
     "server_type": "paper",
@@ -12,7 +12,7 @@
   },
   "cave": {
     "name": "Cave",
-    "status": "active",
+    "status": "inactive",
     "port": 26913,
     "minecraft_version": "1.21.1",
     "server_type": "paper",
@@ -56,7 +56,7 @@
   },
   "poop": {
     "name": "Poop",
-    "status": "active",
+    "status": "inactive",
     "port": 26314,
     "minecraft_version": "1.21.1",
     "server_type": "paper",
@@ -67,7 +67,7 @@
   },
   "river": {
     "name": "River",
-    "status": "active",
+    "status": "inactive",
     "port": 26010,
     "minecraft_version": "1.21.1",
     "server_type": "paper",
