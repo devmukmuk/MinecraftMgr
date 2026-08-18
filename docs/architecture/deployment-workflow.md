@@ -49,6 +49,36 @@ one-time cutover from oscar's old untracked copies to this location.
    `sudo systemctl restart mc-<realm>` (see
    [oscar-realm-hosting.md](oscar-realm-hosting.md) for the per-realm
    systemd units), or `mc-proxy` if `velocity.toml` changed.
+8. **Restart `mc-trigger.service` if the change touches anything it
+   imports** — `services/trigger_daemon.py`, `capacity_service.py`,
+   `trigger_service.py`, `registry_service.py`, or anything those pull in.
+
+### Why step 8 is easy to forget — and did get forgotten (2026-08-18)
+
+`mc-trigger.service` is a long-running process (`ThreadingHTTPServer`,
+started once by `minecraftmgr trigger serve` and left running). `git pull`
+only updates the files on disk — a process that's already running keeps
+executing whatever it already loaded into memory until it's explicitly
+restarted. A CLI command (`minecraftmgr realm start <id>`) never hits this,
+since every invocation is a fresh process that always imports current code
+— only the *daemon* can go stale.
+
+This actually happened: after merging the capacity-cap PR (#90) and
+confirming it worked from the CLI, `mc-trigger.service` itself was never
+restarted. The AUTOSTART button kept calling the **old**, pre-capacity-cap
+`start_realm()` path with zero eviction logic, so repeated AUTOSTART clicks
+on the picker page started 5 realms at once against a cap of 3 — while the
+CLI, tested separately, enforced the cap correctly the whole time. Found by
+comparing `realm status` output against a manual `screen -ls`, restarted
+with `sudo systemctl restart mc-trigger.service`, confirmed fixed
+immediately after.
+
+**Rule of thumb**: any change to a service module reachable from
+`trigger_daemon.py` needs `mc-trigger.service` restarted as part of the
+same deploy that changed it — not "eventually," not "next time it's
+convenient." Verify with `sudo systemctl status mc-trigger.service
+--no-pager` — the `Active: active (running) since ...` timestamp should be
+at or after the deploy that changed the code.
 
 ## Rolling back
 
