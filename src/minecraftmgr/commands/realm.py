@@ -26,6 +26,7 @@ from minecraftmgr.config.settings import Settings
 from minecraftmgr.models.server_entry import ServerEntry
 from minecraftmgr.services.capacity_service import CapacityError, start_realm_within_capacity
 from minecraftmgr.services.jar_cache_service import JarCacheError, ensure_jar_cached
+from minecraftmgr.services.player_service import active_players
 from minecraftmgr.services.provision_service import (
     ReadinessTimeout,
     RealmCrashedBeforeReady,
@@ -358,7 +359,10 @@ def status_cmd(
 
     Reads live `screen` state, same as trigger_daemon's GET /status -- not
     servers.json's `status` field, which only says whether a realm is meant
-    to be active, not whether it's actually running right now.
+    to be active, not whether it's actually running right now. Active Users
+    comes from the realm's own logs/latest.log (see player_service) -- only
+    checked while the realm is running, since a stopped realm's latest.log
+    reflects its last session, not who's online now.
     """
 
     settings = load_settings()
@@ -376,14 +380,22 @@ def status_cmd(
     table.add_column("Name")
     table.add_column("Registry status")
     table.add_column("Running")
+    table.add_column("Active Users")
 
     for server in targets:
         running = realm_running(server.data_dir)
+        if running:
+            players = active_players(settings.data_root / server.data_dir / "logs")
+            active_users = ", ".join(players) if players else "[dim]-[/dim]"
+        else:
+            active_users = "[dim]-[/dim]"
+
         table.add_row(
             server.server_id,
             server.name,
             server.status,
             "[green]yes[/green]" if running else "[dim]no[/dim]",
+            active_users,
         )
 
     console.print(table)
