@@ -70,19 +70,40 @@ point, not a proven pattern.
 
 ## Open work
 
-- The systemd process model described above was never actually deployed
-  on oscar — real realms run under `screen`, started by hand-maintained
-  scripts. [oscar-migration-plan.md](../architecture/oscar-migration-plan.md)
-  documents the real layout and the plan to reconcile `/srv/minecraft`
-  with the git/data split, while explicitly leaving the `screen`→systemd
-  conversion as separate, later work.
-- Restart is a manual step today (`screen` stop/start or `systemctl` once
-  that conversion happens) — no `minecraftmgr server restart <id>` CLI
-  command wraps it, so DEP still depends on shelling into oscar directly
-  for that step. It also must run as the `minecraft` system user, not
+- **Correction (2026-08-18)**: the systemd process model wasn't fully
+  undeployed after all — `minecraft-autostart.service` (`WantedBy=
+  multi-user.target`, `User=minecraft`) already existed on oscar, enabled,
+  running `start_all_minecraft_servers.sh` at boot. It was just silently
+  broken since the migration's Step 0 mount flip: its `ExecStart` pointed at
+  `/srv/minecraft/Scripts/`, a path that hasn't existed since, so realms
+  wouldn't actually auto-start after a reboot. Found and fixed by actually
+  triggering it live — repointed at `/srv/mc/.venv/bin/python -m
+  minecraftmgr realm start --all`, confirmed working via `journalctl -u
+  minecraft-autostart.service` (correctly started every active realm not
+  already running, correctly skipped the one that was). Real realms still
+  run under `screen`, not native systemd services per realm — that broader
+  conversion is still the separate, later work
+  [oscar-migration-plan.md](../architecture/oscar-migration-plan.md)
+  describes.
+- Restart still isn't a single command — `realm start`/`realm stop <id>|
+  --all` exist now (2026-08-18, see
+  [PROV-design.md](PROV-design.md#realm-validate-2026-08-18)'s sibling
+  work), so "stop then start" covers it, but there's no combined `realm
+  restart <id>`. Both must still run as the `minecraft` system user, not
   whichever user is SSH'd in — the world's lock file and other live files
   are group-read-only, so a command run as the wrong user fails with
   `AccessDeniedException` rather than actually starting the realm.
+- **Found running `realm start --all` live for the first time (2026-08-18)**:
+  4 of the 6 active realms (`arbor`, `cave_1_21_1`, `poop_1_21_1`,
+  `river_1_21_1`) have hand-edited `start.sh` files requesting `-Xmx14G` —
+  impossible to satisfy on oscar's 15Gi total RAM, especially four at once —
+  and none have the mandatory `-Djava.net.preferIPv4Stack=true` flag. Never
+  caught before because the old hardcoded-array script never tried starting
+  them. `minecraftmgr realm validate --all --fix` (new, see
+  [PROV-design.md](PROV-design.md#realm-validate-2026-08-18)) now fixes the
+  IPv4 flag automatically but deliberately leaves `MEM_MAX` alone rather
+  than guessing — picking real memory values per realm and applying them is
+  still open, manual work.
 - `tools/scripts/` (oscar-side live server scripts) now exists — every
   currently-relevant script found on oscar was imported verbatim on
   2026-08-18 (`start_all`/`stop_all`/`config_ufw_rules`, both backup script
