@@ -297,6 +297,14 @@ loop needed). A successful eviction is reported back either way (CLI:
 manual, deliberate admin action, not the automated/frequent path this cap
 exists to protect. Tracked as a known gap, not a bug.
 
+**Real incident, caught same day**: merging this PR alone wasn't enough —
+`mc-trigger.service` (the long-running daemon behind AUTOSTART) doesn't
+pick up new code until it's restarted, so the AUTOSTART button kept running
+the old, pre-cap `start_realm()` with zero eviction until it was manually
+restarted. 5 realms ended up running against a cap of 3. See
+[deployment-workflow.md](../architecture/deployment-workflow.md)'s "Restart
+`mc-trigger.service`" deploy step for the fix and the rule going forward.
+
 ## Open work
 
 - `mem_min`/`mem_max` aren't modeled in `ServerEntry` (an existing decision
