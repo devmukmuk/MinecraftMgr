@@ -74,10 +74,17 @@ This epic is documentation- and infra-config-heavy rather than
   whichever user is SSH'd in — the world's lock file and other live files
   are group-read-only, so a command run as the wrong user fails with
   `AccessDeniedException` rather than actually starting the realm.
-- `tools/scripts/` (oscar-side live server scripts) aren't built yet for
-  `start_all`/`stop_all`/`config_ufw_rules` — `scaffold_new` specifically
-  is now superseded by [PROV](PROV-design.md)'s `minecraftmgr realm
-  provision`/`activate` rather than a ported bash script.
+- `tools/scripts/` (oscar-side live server scripts) now exists — every
+  currently-relevant script found on oscar was imported verbatim on
+  2026-08-18 (`start_all`/`stop_all`/`config_ufw_rules`, both backup script
+  variants, a deduplicated `extract-user-data.py`, and `scaffold_new` kept
+  for reference despite being superseded by [PROV](PROV-design.md)'s
+  `minecraftmgr realm provision`/`activate`). None of it has been rewritten
+  yet — see [tools/scripts/README.md](../../tools/scripts/README.md)'s
+  "known issues" column for what's still outstanding (hardcoded realm
+  lists, stale paths, backup-script consolidation), and
+  [redeploy-oscar-scripts.md](../workflows/redeploy-oscar-scripts.md) for
+  cutting oscar over from the old untracked copies to this location.
 - No automated health check after a deploy (e.g. confirming a realm came
   back up and reachable) — Step 10 of the runbook is a manual
   client-connect test.

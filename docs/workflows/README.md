@@ -63,6 +63,7 @@ checkout can't push.
 | [Modify server ops](modify-ops.md) | None | Live console injection possible without a restart |
 | [Delete a realm completely](delete-realm.md) | None | Irreversible — read this one fully before running anything |
 | [Convert vanilla/Fabric/Forge → Paper](convert-engine.md) | Deliberately manual/guided | One direction only — see that doc for why Paper → vanilla isn't a thing here |
+| [Redeploy oscar's Minecraft scripts from git](redeploy-oscar-scripts.md) | None | One-time cutover, `sudo`/`minecraft`-user gated |
 
 ## For family members, not admins
 

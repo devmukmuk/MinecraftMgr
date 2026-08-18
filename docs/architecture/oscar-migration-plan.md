@@ -841,17 +841,38 @@ setting that; the permission bits are a signal, not a guarantee.
 
 ### 3. Port the scripts
 
-Copy the four still-relevant scripts into `tools/scripts/` in the repo
-(drop `.old` files, `sync.ffs_db`, and the backup script — see below),
-commit via the normal issue/branch/PR flow, then on oscar delete
-`/opt/mc/Scripts/` once `/srv/mc/tools/scripts/` is confirmed working so
-there's one copy of the truth, reviewed via PR going forward:
+**Done, as an import (2026-08-18)** — every currently-relevant script found
+on oscar was copied verbatim into [tools/scripts/](../../tools/scripts/README.md),
+with a provenance header noting its original path but no logic changes:
+`start_all_minecraft_servers.sh`, `stop_all_minecraft_servers.sh`,
+`config_ufw_rules.sh`, `minecraft_all_in_one_backup_v1.sh`,
+`minecraft_single_backup.sh` (a newer variant found in `/opt/scripts/` that
+wasn't known about when this section was first written), and
+`extract-user-data.py` (deduplicated from three identical per-realm copies).
+`scafold_new_minecraft_server.sh` + `scafold_help.txt` were kept too, for
+reference, despite being superseded (see below) — `.old` files, `sync.ffs_db`,
+and stale/duplicate copies were left behind; the full list of what was and
+wasn't imported, and why, is in
+[tools/scripts/README.md](../../tools/scripts/README.md).
 
-- `start_all_minecraft_servers.sh`, `stop_all_minecraft_servers.sh` —
-  update to loop over `minecraftmgr server list --active-only` instead of
-  the hardcoded `servers=(...)` array
-- `scafold_new_minecraft_server.sh` + `scafold_help.txt`
-- `config_ufw_rules.sh`
+**Not done yet**: none of the rewrites originally planned for this step
+happened — `start_all`/`stop_all` still have the hardcoded `servers=(...)`
+array instead of looping over `minecraftmgr server list --active-only`,
+and the two backup scripts haven't been consolidated. Those are tracked as
+the "known issues" column in `tools/scripts/README.md`, to be picked off
+incrementally rather than rewritten all at once.
+
+Getting oscar to actually run these tracked copies instead of the untracked
+originals at `/opt/mc/Scripts/` and `/opt/scripts/` is a separate manual
+cutover — see
+[docs/workflows/redeploy-oscar-scripts.md](../workflows/redeploy-oscar-scripts.md).
+That includes deleting `/opt/mc/Scripts/` once the new location is confirmed
+working, same as this section originally said.
+
+`scafold_new_minecraft_server.sh` specifically is superseded by
+[PROV](../epics/PROV-design.md)'s `minecraftmgr realm provision`/`activate`
+rather than being revived — imported for reference only, not meant to be
+redeployed or run again.
 
 ### 4. Retire the old backup script
 

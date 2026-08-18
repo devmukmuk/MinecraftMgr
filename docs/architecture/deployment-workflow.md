@@ -26,6 +26,16 @@ increasingly likely to conflict. Splitting the trees means a deploy is just
 "pull, then restart" — no stash dance, and backups are independent tar/sha256
 snapshots handled by `minecraftmgr backup`, not git.
 
+## Scripts
+
+`tools/scripts/` (oscar-side Minecraft automation — start/stop-all, backups,
+firewall config) lives inside the git tree like everything else here, so it
+rides this same pull-based flow with no special-casing. See
+[tools/scripts/README.md](../../tools/scripts/README.md) for what's in there
+and its current state, and
+[redeploy-oscar-scripts.md](../workflows/redeploy-oscar-scripts.md) for the
+one-time cutover from oscar's old untracked copies to this location.
+
 ## Deploy steps
 
 1. Make changes locally in this repo (Windows dev box).
