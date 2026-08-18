@@ -37,12 +37,16 @@ oscar's current layout and shouldn't be cut over to blindly.
    diff /srv/mc/tools/scripts/start_all_minecraft_servers.sh /opt/mc/Scripts/start_all_minecraft_servers.sh
    diff /srv/mc/tools/scripts/stop_all_minecraft_servers.sh  /opt/mc/Scripts/stop_all_minecraft_servers.sh
    diff /srv/mc/tools/scripts/config_ufw_rules.sh            /opt/mc/Scripts/config_ufw_rules.sh
-   diff /srv/mc/tools/scripts/minecraft_all_in_one_backup_v1.sh /opt/mc/Scripts/minecraft_all_in_one_backup_v1.sh
+   diff /srv/mc/tools/scripts/minecraft_all_in_one_backup_v1.sh /opt/scripts/minecraft_all_in_one_backup_v1.sh
    ```
 
    Only the provenance header comment at the top of each file should differ
    — if anything else differs, oscar's copy has drifted since the import and
-   the diff needs to be understood before continuing.
+   the diff needs to be understood before continuing. (`minecraft_all_in_one_backup_v1.sh`
+   is compared against `/opt/scripts/`, not `/opt/mc/Scripts/` — that's the
+   actually-cron'd, fixed copy; see [tools/scripts/README.md](../../tools/scripts/README.md)'s
+   2026-08-18 correction. `/opt/mc/Scripts/`'s copy of that one file is a
+   stale, unused duplicate, confirmed while running this exact step live.)
 
 3. **Point the cron entries at the new location.** The backup script's cron
    line runs as the `minecraft` user, which this SSH key cannot reach
