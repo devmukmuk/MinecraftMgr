@@ -20,6 +20,7 @@ _STATUS_LABELS = {
 }
 
 _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -147,7 +148,7 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
 
   .grid {{
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    grid-template-columns: 1fr;
     gap: 1rem;
   }}
 
@@ -169,9 +170,9 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
 
   .card-top {{
     display: flex;
+    flex-direction: column;
     align-items: flex-start;
-    justify-content: space-between;
-    gap: 0.6rem;
+    gap: 0.5rem;
   }}
 
   .realm-name {{
@@ -503,11 +504,11 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
 
 _CARD_TEMPLATE = """      <article class="card">
         <div class="card-top">
+          <span class="status {status_class}" data-realm="{server_id}" data-registry="{status_class}"><span class="dot"></span><span class="status-label">{status_label}</span></span>
           <div>
             <p class="realm-name">{name}</p>
             <span class="version-badge">Minecraft {version} &middot; {server_type}</span>
           </div>
-          <span class="status {status_class}" data-realm="{server_id}" data-registry="{status_class}"><span class="dot"></span><span class="status-label">{status_label}</span></span>
         </div>
         <div class="addr-row">
           <code>{address}</code>
