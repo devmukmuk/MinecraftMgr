@@ -59,6 +59,15 @@ This epic is documentation- and infra-config-heavy rather than
   realm's directory from its most recent `backups_root` archive
   ([BAK](BAK.md)) after checksum verification, unrelated to git.
 
+## Related
+
+[oscar-mgr-project-convention.md](../architecture/oscar-mgr-project-convention.md)
+generalizes this epic's checkout/data-split, per-project scripts+venv, and
+oscar account/group decisions into a convention for future sibling projects
+(`PlexMgr`, `BackupMgr`, `MindItMgr`, `TautulliMgr`) that will each manage a
+different oscar service — none of those exist yet, so treat it as a starting
+point, not a proven pattern.
+
 ## Open work
 
 - The systemd process model described above was never actually deployed
