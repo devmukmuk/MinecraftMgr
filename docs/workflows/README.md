@@ -84,7 +84,8 @@ first candidates, roughly in order of how self-contained they are:
    <id>`/`--all` for symmetry. Both are thin wrappers around
    `trigger_service.start_realm()`/`stop_realm()`, already written and
    tested. Superseded `tools/scripts/start_all_minecraft_servers.sh` and
-   `stop_all_minecraft_servers.sh` — see
+   `stop_all_minecraft_servers.sh`, confirmed working live on oscar and
+   since deleted — see
    [tools/scripts/README.md](../../tools/scripts/README.md).
 2. **`realm console <id> "<command>"`** — the `send_console_command` primitive
    PROV-design.md already proposes. Unlocks whitelist/ops/gamerule changes
