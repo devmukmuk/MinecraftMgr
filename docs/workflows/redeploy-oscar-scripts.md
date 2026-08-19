@@ -34,8 +34,6 @@ oscar's current layout and shouldn't be cut over to blindly.
    swapping anything:
 
    ```bash
-   diff /srv/mc/tools/scripts/start_all_minecraft_servers.sh /opt/mc/Scripts/start_all_minecraft_servers.sh
-   diff /srv/mc/tools/scripts/stop_all_minecraft_servers.sh  /opt/mc/Scripts/stop_all_minecraft_servers.sh
    diff /srv/mc/tools/scripts/config_ufw_rules.sh            /opt/mc/Scripts/config_ufw_rules.sh
    diff /srv/mc/tools/scripts/minecraft_all_in_one_backup_v1.sh /opt/scripts/minecraft_all_in_one_backup_v1.sh
    ```
@@ -59,18 +57,16 @@ oscar's current layout and shouldn't be cut over to blindly.
    exit
    ```
 
-   If `start_all_minecraft_servers.sh` is invoked anywhere at boot (systemd
-   unit, `rc.local`, a login script) rather than by hand, update that
-   reference the same way.
-
 4. **Confirm equivalent behavior** before removing anything:
    - Run the backup script manually from its new path
      (`/srv/mc/tools/scripts/minecraft_all_in_one_backup_v1.sh`) and confirm
      a new archive lands in `/mnt/backup/minecraft` the same as before.
-   - Run `start_all_minecraft_servers.sh` / `stop_all_minecraft_servers.sh`
-     from the new path against a non-critical realm (e.g. `jitterbug`,
-     already flagged disposable — see [[oscar_migration_status]]) and
-     confirm the same screen-session behavior as the old copy.
+
+   (`start_all_minecraft_servers.sh`/`stop_all_minecraft_servers.sh` and
+   their boot-time invocation via `minecraft-autostart.service` are already
+   handled — that unit now runs `minecraftmgr realm start --all` directly,
+   confirmed working live, and both scripts have been deleted from
+   `tools/scripts/`. See [tools/scripts/README.md](../../tools/scripts/README.md).)
 
 5. **Remove the old, now-superseded copies** — only after step 4 is
    confirmed:

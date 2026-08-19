@@ -11,10 +11,16 @@ untracked originals is a separate manual step: see
 The plan is to work through the "known issues" column below incrementally,
 one script at a time, rather than rewrite everything at once.
 
+**Deleted 2026-08-18**: `start_all_minecraft_servers.sh` and
+`stop_all_minecraft_servers.sh` — fully superseded by `minecraftmgr realm
+start --all`/`realm stop --all` (reads `servers.json` instead of a
+hardcoded array), confirmed working live on oscar. Their untracked
+originals still sit at `/opt/mc/Scripts/` until the broader
+[redeploy-oscar-scripts.md](../../docs/workflows/redeploy-oscar-scripts.md)
+cutover removes that whole directory.
+
 | Script | Original oscar path | Status | Known issues |
 |---|---|---|---|
-| `start_all_minecraft_servers.sh` | `/opt/mc/Scripts/` | **Superseded** (2026-08-18) | `minecraftmgr realm start --all` now exists and does this properly (reads `servers.json` instead of a hardcoded array). Candidate for deletion once the redeploy runbook confirms the CLI command works live on oscar. |
-| `stop_all_minecraft_servers.sh` | `/opt/mc/Scripts/` | **Superseded** (2026-08-18) | `minecraftmgr realm stop --all` now exists (wraps the same tested `trigger_service.stop_realm()` logic). Same deletion candidacy as above. |
 | `scafold_new_minecraft_server.sh` | `/opt/mc/Scripts/` | Superseded, kept for reference | Replaced by `minecraftmgr realm provision`/`realm activate` ([PROV-design.md](../../docs/epics/PROV-design.md)), confirmed working live on oscar. Still assumes the pre-migration `/srv/minecraft` path. Not planned to be revived — kept here only so the old approach isn't lost. |
 | `scafold_help.txt` | `/opt/mc/Scripts/` | Superseded, kept for reference | Usage example for the script above. |
 | `config_ufw_rules.sh` | `/opt/mc/Scripts/` | Live (manual, run by hand) | Hardcoded `MINECRAFT_PORTS=(26005 26010)` — doesn't cover realms added since, and doesn't know about the shared Velocity port (`25565`). Also mixes in non-Minecraft rules (Samba, Plex, Docker) — fine for oscar as a whole, but worth deciding whether that scope belongs in this repo. |
@@ -31,20 +37,17 @@ what the CLI should grow to replace it, and what's simply obsolete now.
 
 | Script | What the CLI already covers | Verdict |
 |---|---|---|
-| `start_all_minecraft_servers.sh` | **Done (2026-08-18)** — `minecraftmgr realm start <id>`/`--all` wraps the existing, already-tested `start_realm()`, reading `servers.json` instead of a hardcoded array | **Delete (OBE)** once the CLI command is confirmed working live on oscar via the redeploy runbook |
-| `stop_all_minecraft_servers.sh` | **Done (2026-08-18)** — `minecraftmgr realm stop <id>`/`--all` wraps `trigger_service.stop_realm()` the same way | **Delete (OBE)**, same condition as above |
 | `scafold_new_minecraft_server.sh` + `scafold_help.txt` | `realm provision`/`realm activate` — confirmed live, and strictly better (jar caching, first-boot cycle, positive Paper/Fabric/vanilla detection, Velocity trust patching, handoff snippets). The old script still assumes pre-migration `/srv/minecraft` paths and knows nothing about Velocity | **Delete (OBE)** — fully superseded, not just mostly. Git history keeps a copy if ever needed; no reason to carry it forward "for reference" now that the comparison is this one-sided. |
 | `config_ufw_rules.sh` | Nothing — `minecraftmgr` doesn't manage the firewall, and this script also covers Samba/Plex/Docker/SSH, well outside Minecraft's scope entirely | **Keep, not a CLI candidate** — but its Minecraft port list (`26005 26010`) is stale (predates Velocity's shared `25565`, doesn't know about newer realms). Needs a manual content update, not a rewrite. |
 | `minecraft_all_in_one_backup_v1.sh` | `backup run --all` covers the tar+sha256 archive part. It does **not** cover this script's stop-before-backup, retention (keep last 3), or restart-after — none of that exists in `backup_service.py` yet | **Partial replace, keep for now** — this is the actual nightly cron job today. Retire it once `BAK` grows retention (already the plan in `oscar-migration-plan.md` Step 4), not before. |
 | `minecraft_single_backup.sh` | Same gap as above (`backup run <id>` has no stop/restart/retention), plus the stale `BASE_DIR=/srv/minecraft` bug already noted | **Partial replace, keep for now** — but redundant with the all-in-one script. Open decision: does this become *the* backup script (single-realm, looped for "all") once retention lands, or do the two get merged? |
 | `extract-user-data.py` | Nothing — no CLI command touches log analysis at all | **Keep as-is** — genuinely standalone, no overlap, no plan to absorb it. |
 
-Net: two wins now shipped (`realm start`/`realm stop`, 2026-08-18 — both
-`start_all`/`stop_all` scripts are deletion candidates once confirmed
-working live on oscar), one clean deletion (the scaffold script), one no-op
-that just needs stale content fixed (`config_ufw_rules.sh`), and one real
-open decision (which backup script survives once `BAK` gets retention, or
-whether they merge).
+Net: two wins shipped and their scripts deleted (`realm start`/`realm
+stop`, 2026-08-18 — see the "Deleted" note above), one clean deletion still
+pending (the scaffold script), one no-op that just needs stale content
+fixed (`config_ufw_rules.sh`), and one real open decision (which backup
+script survives once `BAK` gets retention, or whether they merge).
 
 ## Explicitly not imported
 

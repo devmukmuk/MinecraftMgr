@@ -7,11 +7,10 @@ realm-picker page's AUTOSTART button already used for a single realm, and
 that `provision`/`activate`'s first-boot cycle already used internally).
 `realm status [id]` reports live `screen` state (running/not, for one realm
 or every registered one), reading the same `realm_running()` check the
-AUTOSTART button's `GET /status` endpoint uses. Not yet redeployed to oscar
-as the actual replacement for
-`start_all_minecraft_servers.sh`/`stop_all_minecraft_servers.sh` — see
-[redeploy-oscar-scripts.md](redeploy-oscar-scripts.md) and
-[tools/scripts/README.md](../../tools/scripts/README.md).
+AUTOSTART button's `GET /status` endpoint uses. Confirmed working live on
+oscar as the replacement for the old `start_all_minecraft_servers.sh`/
+`stop_all_minecraft_servers.sh` scripts, which have since been deleted —
+see [tools/scripts/README.md](../../tools/scripts/README.md).
 
 ## Capacity cap (2026-08-18)
 
