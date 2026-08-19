@@ -56,7 +56,10 @@ def render_handoff(server: ServerEntry, backend_port: int) -> str:
     """Render the full three-part handoff block: servers.json, velocity.toml, Cloudflare."""
 
     return (
-        "=== Run this from the dev box ===\n"
+        "=== Run this from the DEV BOX, not oscar ===\n"
+        "(oscar's checkout can't `git push` -- running this here instead\n"
+        " silently creates untracked drift in servers.json that has to be\n"
+        " found and manually reconciled later)\n"
         f"{render_server_add_command(server)}\n"
         "\n"
         "=== Add to /opt/mc/_proxy/velocity.toml (mike can edit; minecraft must restart Velocity) ===\n"

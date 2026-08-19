@@ -398,3 +398,27 @@ for automating each one, not yet built:
   `server.properties` rendering.
 - **Name**: already works today, no new feature needed —
   `minecraftmgr server update <id> --name "..."` + `minecraftmgr web build`.
+
+## `provision`'s handoff text was too easy to misread as "run it here" (2026-08-19)
+
+Real incident, provisioning `blue`: `realm provision` (correctly run on
+oscar as `minecraft`) ended by printing `render_handoff()`'s "=== Run this
+from the dev box ===" block, and the exact `minecraftmgr server add ...`
+line under it got pasted straight into the same oscar shell instead of
+carried back to the dev box. `minecraftmgr` is installed on oscar too, so
+the command ran without error — it just mutated oscar's checkout of
+`servers.json` in place, uncommitted, since oscar's checkout can't `git
+push` (see "Hard constraints carried over unchanged" above). The drift sat
+unnoticed until a later, unrelated `velocity.toml` debugging session
+surfaced it. Reconciled by hand: copied the exact entry back into the dev
+box's tracked `servers.json`, rebuilt the picker page, and shipped it
+through the normal REG flow.
+
+The label alone ("dev box") wasn't enough friction — a human deep in an
+oscar SSH session doing something else entirely will paste a
+copy-pasteable command where they are, not stop to switch machines, unless
+the output also says what breaks if they don't. Fixed in
+`realm_handoff_service.render_handoff()`: the header now reads "Run this
+from the DEV BOX, not oscar" and spells out the actual consequence
+(silent, untracked `servers.json` drift) rather than just naming the
+correct location.
