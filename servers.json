@@ -10,6 +10,17 @@
     "created": "2026-08-17T03:42:44.127245+00:00",
     "notes": ""
   },
+  "blue": {
+    "name": "Blue",
+    "status": "active",
+    "port": 26915,
+    "minecraft_version": "26.2",
+    "server_type": "paper",
+    "jar_source": "",
+    "data_dir": "blue_26_2",
+    "created": "2026-08-19T02:39:38.374834+00:00",
+    "notes": ""
+  },
   "cave": {
     "name": "Cave",
     "status": "inactive",
