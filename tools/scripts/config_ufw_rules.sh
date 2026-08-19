@@ -8,6 +8,7 @@
 # Usage:      sudo bash config_ufw_rules.sh
 
 # === Helper Function for Standard Port Rules ===
+# Allow one port/protocol through ufw, skipping if a matching rule already exists.
 check_and_allow() {
     local port="$1"
     local proto="$2"
@@ -21,6 +22,7 @@ check_and_allow() {
 }
 
 # === Helper Function for Docker → Host Access Rules ===
+# Allow the Docker bridge subnet to reach one host port, skipping if already allowed.
 check_and_allow_docker_access() {
     local docker_subnet="172.17.0.0/16"
     local port="$1"

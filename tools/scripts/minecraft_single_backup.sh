@@ -18,6 +18,9 @@
 #   - Keep only last 3 backups
 #   - Restart server only if it was running
 #   - Log actions under /mnt/backup/minecraft/logs
+#
+# Usage:
+#   minecraft_single_backup.sh <server_folder>
 ###############################################################################
 
 SERVER_NAME="$1"

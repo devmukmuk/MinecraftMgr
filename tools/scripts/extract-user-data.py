@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-# Imported from oscar on 2026-08-18. This file was byte-identical across
-# /opt/mc/{arbor_1_21_10,gravestone_26_1_2,river_1_21_1}/extract-user-data.py
-# (md5 8dd66a5efe7e34b6d910d8b3c9158ace) — consolidated to this one tracked
-# copy. See tools/scripts/README.md.
+"""Extract Minecraft user login (and optionally unauthorized-attempt) timestamps from server logs.
+
+Imported from oscar on 2026-08-18. This file was byte-identical across
+/opt/mc/{arbor_1_21_10,gravestone_26_1_2,river_1_21_1}/extract-user-data.py
+(md5 8dd66a5efe7e34b6d910d8b3c9158ace) -- consolidated to this one tracked
+copy. See tools/scripts/README.md.
+"""
 import argparse
 import os
 import re
@@ -26,17 +29,21 @@ UNAUTH_RE = re.compile(
 )
 
 def get_date_from_filename(filename):
+    """Return the YYYY-MM-DD date prefix from a rotated log filename, or None."""
     match = FILENAME_DATE_RE.match(filename)
     if match:
         return match.group(1)
     return None
 
 def open_log_file(path):
+    """Open a log file for reading text, transparently handling .gz rotation."""
     if path.endswith(".gz"):
         return gzip.open(path, "rt", encoding="utf-8", errors="ignore")
     return open(path, "r", encoding="utf-8", errors="ignore")
 
 def process_logs(log_dir, include_unauthorized):
+    """Scan every .log/.gz file in log_dir, returning {user: [timestamps]} for
+    successful joins and, if requested, unauthorized join attempts."""
     user_logins = defaultdict(list)
     unauthorized_logins = defaultdict(list)
 
@@ -77,6 +84,7 @@ def process_logs(log_dir, include_unauthorized):
 
 
 def main():
+    """Parse CLI args, run the log scan, and print results grouped by user."""
     parser = argparse.ArgumentParser(description="Extract Minecraft user logins from logs.")
     parser.add_argument(
         "--log-dir",
