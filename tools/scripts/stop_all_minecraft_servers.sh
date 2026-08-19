@@ -2,6 +2,12 @@
 # Imported verbatim from oscar:/opt/mc/Scripts/stop_all_minecraft_servers.sh
 # on 2026-08-18. Not yet rewritten — see tools/scripts/README.md for known
 # issues (hardcoded servers= array) before relying on this for a new realm.
+#
+# Script:  stop_all_minecraft_servers.sh
+# Purpose: Gracefully stop every server listed in the hardcoded `servers`
+#          array that's currently running (screen + in-game `stop`),
+#          confirming shutdown via `pgrep` and logging each step.
+# Usage:   ./stop_all_minecraft_servers.sh
 
 set -u
 
@@ -10,6 +16,7 @@ logfile="/srv/minecraft/logs/stop_all_minecraft_servers.log"
 
 mkdir -p "$(dirname "$logfile")"
 
+# Current local timestamp, used to prefix every log line.
 timestamp() {
     date "+%Y-%m-%d %H:%M:%S"
 }
