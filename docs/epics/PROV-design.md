@@ -41,7 +41,9 @@ Confirmed live on oscar (not assumed) while designing this epic:
 - `config/paper-global.yml` (the file holding the Velocity trust block) only
   exists after a realm's **first boot** — this was the actual blocker hit
   converting `gravestone`/`jitterbug`.
-- Velocity runs as a `screen -dmS velocity_proxy` session, **not systemd**
+- **Superseded 2026-10-05:** Velocity now runs as `velocity-proxy.service`
+  (systemd, no screen; see [reboot-recovery.md](../workflows/reboot-recovery.md)).
+  Historical note: Velocity ran as a `screen -dmS velocity_proxy` session, **not systemd**
   (despite what earlier docs assumed). **Correction (2026-08-17):** an
   earlier version of this doc claimed that session is `minecraft`-owned as
   a hard rule, "confirmed via `ps aux`" — that was true at the one moment

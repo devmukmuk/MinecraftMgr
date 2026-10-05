@@ -54,6 +54,7 @@ checkout can't push.
 | [Change a realm's name](change-name.md) | Full — one command | |
 | [Change a realm's port](change-port.md) | None | Touches 3 files across 2 machines |
 | [Stop / restart a realm](stop-restart-server.md) | Full — `realm start`/`realm stop` (2026-08-18) | Not yet redeployed to oscar in place of the old `start_all`/`stop_all` scripts |
+| [Bring everything back after a reboot](reboot-recovery.md) | Full after one-time setup (2026-10-05) | `velocity-proxy.service` starts/restarts Velocity; realms stop cleanly on shutdown |
 | [Back up a realm](backup-realm.md) | Full — one command | |
 | [Restore a realm from backup](restore-from-backup.md) | None | |
 | [Update a realm's jar version](update-jar-version.md) | None | |

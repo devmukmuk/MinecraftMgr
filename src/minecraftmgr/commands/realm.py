@@ -333,14 +333,19 @@ def start_cmd(
 @app.command("stop")
 def stop_cmd(
     server_id: Optional[str] = typer.Argument(
-        None, help="Realm id to stop. Omit with --all to stop every active realm."
+        None, help="Realm id to stop. Omit with --all to stop every running realm."
     ),
-    all_servers: bool = typer.Option(False, "--all", help="Stop every active realm in the registry"),
+    all_servers: bool = typer.Option(
+        False, "--all", help="Stop every running realm in the registry (active or inactive)"
+    ),
 ) -> None:
-    """Stop a realm's screen session (graceful, falling back to a kill), or every active realm with --all.
+    """Stop a realm's screen session (graceful, falling back to a kill), or every running realm with --all.
 
     Wraps trigger_service.stop_realm() -- already used internally by
     provision/activate's first-boot cycle. Run as the `minecraft` user.
+    --all covers inactive realms too (Autostart can start them), so the
+    shutdown hook in tools/systemd/minecraft-autostart-stop.conf stops
+    everything that's actually running.
     """
 
     if bool(server_id) == all_servers:
@@ -348,7 +353,12 @@ def stop_cmd(
         raise typer.Exit(code=1)
 
     settings = load_settings()
-    targets = _resolve_targets(settings, server_id, all_servers)
+    if all_servers:
+        targets = [server for server in list_servers(settings) if realm_running(server.data_dir)]
+        if not targets:
+            console.print("No realms running")
+    else:
+        targets = _resolve_targets(settings, server_id, False)
 
     for server in targets:
         stop_realm(server, settings.data_root)

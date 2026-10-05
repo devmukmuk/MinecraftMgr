@@ -48,7 +48,7 @@ one-time cutover from oscar's old untracked copies to this location.
 7. Restart whichever realms changed:
    `sudo systemctl restart mc-<realm>` (see
    [oscar-realm-hosting.md](oscar-realm-hosting.md) for the per-realm
-   systemd units), or `mc-proxy` if `velocity.toml` changed.
+   systemd units), or `velocity-proxy` if `velocity.toml` changed.
 8. **Restart `mc-trigger.service` if the change touches anything it
    imports** — `services/trigger_daemon.py`, `capacity_service.py`,
    `trigger_service.py`, `registry_service.py`, or anything those pull in.

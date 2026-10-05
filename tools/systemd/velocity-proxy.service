@@ -1,0 +1,40 @@
+# Velocity proxy for *.gamenightbymike.com, run by systemd instead of a screen session.
+#
+# Why not screen: every Velocity crash since 2026-08-16 (6 hs_err_pid*.log files in
+# /opt/mc/_proxy) is the same Java 25 "upcallLinker.cpp:77 ... wrong thread state for
+# upcall" abort, hit while JLine was reading console input from the screen terminal.
+# Here there's no terminal and JLine is off (-Dterminal.jline=false), so that code
+# never runs. Restart=always brings it back after any exit, and WantedBy=multi-user
+# starts it at every boot, including after a power cut.
+#
+# No interactive console: logs are in journalctl -u velocity-proxy and
+# /opt/mc/_proxy/logs/latest.log; apply velocity.toml changes with systemctl restart.
+#
+# Install: see docs/workflows/reboot-recovery.md.
+
+[Unit]
+Description=Velocity proxy (gamenightbymike.com, port 25565)
+After=network-online.target
+Wants=network-online.target
+Before=minecraft-autostart.service
+# Give up only on a crash loop (5 starts in 2 min), so a bad velocity.toml doesn't spin forever.
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=minecraft
+Group=backup
+UMask=0002
+WorkingDirectory=/opt/mc/_proxy
+ExecStart=/usr/bin/java -Dterminal.jline=false -Xms512M -Xmx1G -jar velocity.jar
+StandardInput=null
+# SIGTERM runs Velocity's shutdown hook (disconnect players, close the listener).
+KillSignal=SIGTERM
+TimeoutStopSec=30
+SuccessExitStatus=143
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

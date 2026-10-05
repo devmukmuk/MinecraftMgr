@@ -44,12 +44,11 @@ nano /opt/mc/_proxy/velocity.toml
 # delete this realm's line from [servers] and its line from [forced-hosts]
 ```
 
-As `mike`, restart to apply:
+As `mike`, restart to apply (Velocity runs as `velocity-proxy.service`
+since 2026-10-05, see [reboot-recovery.md](reboot-recovery.md)):
 
 ```bash
-screen -S velocity_proxy -X quit
-cd /opt/mc/_proxy
-screen -dmS velocity_proxy java -Xms512M -Xmx1G -jar velocity.jar
+sudo systemctl restart velocity-proxy
 ```
 
 Do this **before** deleting the Cloudflare CNAME below — otherwise there's a
@@ -92,8 +91,8 @@ to actually `rm -rf` it a week later once nobody's asked about it.
 ## Verify
 
 - `screen -ls` on oscar no longer lists the realm.
-- `/opt/mc/_proxy/velocity.toml` has no reference to it, and `velocity_proxy`
-  restarted cleanly (`screen -r velocity_proxy`, check the log, detach).
+- `/opt/mc/_proxy/velocity.toml` has no reference to it, and Velocity
+  restarted cleanly (`journalctl -u velocity-proxy -n 20` ends with `Done`).
 - The realm-picker page no longer shows a card for it.
 - `<realm>.gamenightbymike.com` fails to resolve (or resolves but the
   connection is refused, if Cloudflare's cache hasn't caught up yet).

@@ -66,20 +66,19 @@ nano /opt/mc/_proxy/velocity.toml
 # update the [servers] line for this realm to 127.0.0.1:<new>
 ```
 
-Then, back in the `minecraft` user's shell, restart Velocity so it picks up
-the new port:
+Then, as `mike`, restart Velocity so it picks up the new port (it runs as
+`velocity-proxy.service` since 2026-10-05, see
+[reboot-recovery.md](reboot-recovery.md)):
 
 ```bash
-sudo -iu minecraft
-screen -S velocity_proxy -X quit
-cd /opt/mc/_proxy
-screen -dmS velocity_proxy java -Xms512M -Xmx1G -jar velocity.jar
+sudo systemctl restart velocity-proxy
+journalctl -u velocity-proxy -n 20 --no-pager   # ends with "Done (...)!"
 ```
 
 ## Verify
 
-- `screen -ls` on oscar shows both the realm's session and `velocity_proxy`
-  up.
+- `screen -ls` (as `minecraft`) shows the realm's session, and
+  `systemctl is-active velocity-proxy` says `active`.
 - Connect to `<realm>.gamenightbymike.com` (no port) and confirm you land on
   the right world — this exercises the whole `[forced-hosts]` → `[servers]`
   → new port chain, not just that the process is alive.
