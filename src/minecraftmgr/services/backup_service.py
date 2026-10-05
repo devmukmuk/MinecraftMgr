@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from minecraftmgr.config.settings import Settings
+from minecraftmgr.constants import ARCHIVE_DIR_NAME
 from minecraftmgr.models.backup_result import BackupResult
 from minecraftmgr.models.server_entry import ServerEntry
 from minecraftmgr.utils.hashing import sha256_file
@@ -17,8 +18,10 @@ class BackupError(Exception):
 
 
 def resolve_server_data_dir(settings: Settings, entry: ServerEntry) -> Path:
-    """Return the on-disk data directory for a registry entry."""
+    """Return the on-disk data directory for a registry entry (under _archive/ if archived)."""
 
+    if entry.status == "archived":
+        return settings.data_root / ARCHIVE_DIR_NAME / entry.data_dir
     return settings.data_root / entry.data_dir
 
 

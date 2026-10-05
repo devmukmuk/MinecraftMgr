@@ -19,11 +19,11 @@ from minecraftmgr.services.registry_service import add_server
 from minecraftmgr.services.trigger_service import TriggerError
 
 
-def _entry(server_id: str) -> ServerEntry:
+def _entry(server_id: str, status: str = "active") -> ServerEntry:
     return ServerEntry(
         server_id=server_id,
         name=server_id.title(),
-        status="active",
+        status=status,
         port=25565,
         minecraft_version="1.21.10",
         server_type="paper",
@@ -42,6 +42,7 @@ def running_daemon(
 
     add_server(settings, _entry("gravestone"))
     add_server(settings, _entry("jitterbug"))
+    add_server(settings, _entry("cave", status="archived"))
 
     pin_path = tmp_path / "pin.secret"
     pin_path.write_text("1234", encoding="utf-8")
@@ -130,6 +131,26 @@ def test_start_unknown_realm_returns_404(running_daemon: tuple[str, list[str]]) 
         urllib.request.urlopen(req)
 
     assert exc_info.value.code == 404
+
+
+def test_archived_realm_is_hidden_and_cannot_be_started(
+    running_daemon: tuple[str, list[str]],
+) -> None:
+    """An archived realm is left out of /status and /start/<id> treats it as unknown."""
+
+    base_url, started = running_daemon
+
+    with urllib.request.urlopen(f"{base_url}/status") as res:
+        assert "cave" not in json.loads(res.read())
+
+    req = urllib.request.Request(
+        f"{base_url}/start/cave", method="POST", headers={"X-Autostart-Pin": "1234"}
+    )
+    with pytest.raises(urllib.error.HTTPError) as exc_info:
+        urllib.request.urlopen(req)
+
+    assert exc_info.value.code == 404
+    assert started == []
 
 
 def test_start_at_capacity_returns_503(

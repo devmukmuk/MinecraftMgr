@@ -43,7 +43,7 @@ A single JSON object keyed by `server_id`. Each value is the entry's fields
 | Field               | Type | Notes                                                                 |
 |---------------------|------|------------------------------------------------------------------------|
 | `name`               | str  | Display name                                                          |
-| `status`             | str  | `active` or `inactive`; `minecraftmgr server list --active-only` filters on this |
+| `status`             | str  | `active`, `inactive` or `archived` (anything else is rejected). **active**: normally running, on the page. **inactive**: not normally running, still on the page and startable with Autostart. **archived**: retired with `tools/scripts/minecraft_archive_world.sh`; folder is `<data_root>/_archive/<data_dir>`; left out of the page, Autostart/`/status`, `realm start`, `backup run`, screenshots; still shown by `server list` and `about`. `server list --active-only` filters to active |
 | `port`               | int  | Backend port on oscar, bound to `127.0.0.1` behind Velocity (see [oscar-realm-hosting.md](../architecture/oscar-realm-hosting.md)) |
 | `minecraft_version`  | str  | Minecraft version the realm runs                                      |
 | `server_type`        | str  | `paper`, `vanilla`, `fabric`, `forge`, ...                            |

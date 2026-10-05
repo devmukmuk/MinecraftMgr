@@ -96,3 +96,32 @@ def test_update_server_changes_fields(settings: Settings) -> None:
     assert updated.status == "inactive"
     assert updated.notes == "retired"
     assert updated.name == "Gatorland"
+
+
+def test_archived_realms_left_out_unless_asked_for(settings: Settings) -> None:
+    """list_servers hides archived realms by default; include_archived shows them."""
+
+    add_server(settings, _entry("gatorland"))
+    add_server(settings, _entry("arbor", status="inactive"))
+    add_server(settings, _entry("cave", status="archived"))
+
+    assert [s.server_id for s in list_servers(settings)] == ["arbor", "gatorland"]
+    assert [s.server_id for s in list_servers(settings, include_archived=True)] == [
+        "arbor",
+        "cave",
+        "gatorland",
+    ]
+    assert [s.server_id for s in list_servers(settings, active_only=True)] == ["gatorland"]
+
+
+def test_invalid_status_is_rejected(settings: Settings) -> None:
+    """Only active, inactive and archived are accepted on add and update."""
+
+    with pytest.raises(RegistryError, match="Invalid status"):
+        add_server(settings, _entry("gatorland", status="retired"))
+
+    add_server(settings, _entry("gatorland"))
+    with pytest.raises(RegistryError, match="Invalid status"):
+        update_server(settings, "gatorland", status="Archived")
+
+    assert update_server(settings, "gatorland", status="archived").status == "archived"

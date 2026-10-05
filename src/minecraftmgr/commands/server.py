@@ -67,7 +67,7 @@ def list_cmd(
     """List realms in the registry."""
 
     settings = load_settings()
-    servers = list_servers(settings, active_only=active_only)
+    servers = list_servers(settings, active_only=active_only, include_archived=True)
 
     table = Table()
     table.add_column("ID")
@@ -115,7 +115,7 @@ def remove(
 def update(
     server_id: str = typer.Argument(...),
     name: Optional[str] = typer.Option(None, "--name"),
-    status: Optional[str] = typer.Option(None, "--status"),
+    status: Optional[str] = typer.Option(None, "--status", help="active, inactive or archived"),
     port: Optional[int] = typer.Option(None, "--port"),
     minecraft_version: Optional[str] = typer.Option(None, "--mc-version"),
     server_type: Optional[str] = typer.Option(None, "--type"),

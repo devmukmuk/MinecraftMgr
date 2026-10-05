@@ -65,3 +65,18 @@ def test_backup_servers_collects_failures_without_aborting(settings: Settings) -
 
     assert [result.server_id for result in results] == ["gatorland"]
     assert [server_id for server_id, _ in failures] == ["missing"]
+
+
+def test_archived_realm_data_dir_is_under_archive(settings: Settings) -> None:
+    """An archived realm's folder resolves to <data_root>/_archive/<data_dir>."""
+
+    from dataclasses import replace
+
+    from minecraftmgr.services.backup_service import resolve_server_data_dir
+
+    entry = _entry("cave")
+
+    assert resolve_server_data_dir(settings, entry) == settings.data_root / "cave"
+    assert resolve_server_data_dir(settings, replace(entry, status="archived")) == (
+        settings.data_root / "_archive" / "cave"
+    )

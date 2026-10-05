@@ -6,11 +6,17 @@ import json
 from dataclasses import replace
 
 from minecraftmgr.config.settings import Settings
+from minecraftmgr.constants import REALM_STATUSES
 from minecraftmgr.models.server_entry import ServerEntry
 
 
 class RegistryError(Exception):
     """Raised for invalid registry operations."""
+
+
+def _check_status(status: object) -> None:
+    if status not in REALM_STATUSES:
+        raise RegistryError(f"Invalid status '{status}' (use one of: {', '.join(REALM_STATUSES)})")
 
 
 def load_registry(settings: Settings) -> dict[str, ServerEntry]:
@@ -43,11 +49,16 @@ def save_registry(settings: Settings, entries: dict[str, ServerEntry]) -> None:
     )
 
 
-def list_servers(settings: Settings, *, active_only: bool = False) -> list[ServerEntry]:
-    """Return registry entries, optionally filtered to active status, sorted by server_id."""
+def list_servers(
+    settings: Settings, *, active_only: bool = False, include_archived: bool = False
+) -> list[ServerEntry]:
+    """Return registry entries sorted by server_id; archived realms only when asked for."""
 
     entries = load_registry(settings)
     servers = [entries[server_id] for server_id in sorted(entries)]
+
+    if not include_archived:
+        servers = [server for server in servers if server.status != "archived"]
 
     if active_only:
         servers = [server for server in servers if server.status == "active"]
@@ -58,6 +69,7 @@ def list_servers(settings: Settings, *, active_only: bool = False) -> list[Serve
 def add_server(settings: Settings, entry: ServerEntry) -> None:
     """Add a new realm to the registry."""
 
+    _check_status(entry.status)
     entries = load_registry(settings)
 
     if entry.server_id in entries:
@@ -86,6 +98,9 @@ def update_server(settings: Settings, server_id: str, **changes: object) -> Serv
 
     if server_id not in entries:
         raise RegistryError(f"Server '{server_id}' not found")
+
+    if "status" in changes:
+        _check_status(changes["status"])
 
     updated = replace(entries[server_id], **changes)
     entries[server_id] = updated
