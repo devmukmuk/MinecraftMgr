@@ -6,10 +6,12 @@ import typer
 from rich.console import Console
 
 from minecraftmgr.commands.backup import app as backup_app
+from minecraftmgr.commands.gravestones import app as gravestones_app
 from minecraftmgr.commands.realm import app as realm_app
 from minecraftmgr.commands.screenshots import app as screenshots_app
 from minecraftmgr.commands.server import app as server_app
 from minecraftmgr.commands.trigger import app as trigger_app
+from minecraftmgr.commands.users import app as users_app
 from minecraftmgr.commands.web import app as web_app
 from minecraftmgr.config import load_settings
 from minecraftmgr.services.registry_service import list_servers
@@ -25,6 +27,8 @@ app.add_typer(web_app, name="web")
 app.add_typer(trigger_app, name="trigger")
 app.add_typer(realm_app, name="realm")
 app.add_typer(screenshots_app, name="screenshots")
+app.add_typer(gravestones_app, name="gravestones")
+app.add_typer(users_app, name="users")
 
 console = Console()
 

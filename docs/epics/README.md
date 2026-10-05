@@ -17,6 +17,7 @@ folder's `install.sh`.
 | DOC | Documentation & Examples — `docs/`, `README.md` | [DOC.md](DOC.md) |
 | PROV | Realm Provisioning — creating/activating realms end to end | [PROV-design.md](PROV-design.md) |
 | CAP | Screenshot Capture & Gallery — organize player screenshots by realm/version, publish a filterable gallery | [CAP-design.md](CAP-design.md) |
+| LOG | Log Reports — gravestones never picked up, player activity per realm (ported from MineOps) | [LOG.md](LOG.md) |
 
 ## Conventions enforced by the git hooks
 
