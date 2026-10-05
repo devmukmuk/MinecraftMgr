@@ -1,0 +1,34 @@
+# Standard server.properties settings for every realm.
+#
+# `minecraftmgr realm validate <id>` (or `minecraftmgr validate <id>`) compares a
+# realm's server.properties with this file, and --fix sets these keys without
+# touching anything else. New realms are scaffolded with these settings.
+# __PORT__ becomes the realm's port from servers.json. Gameplay settings
+# (difficulty, pvp, spawn-protection, max-players, ...) are per-realm choices
+# and deliberately not listed here.
+#
+# The comment directly above each setting is the reason shown in reports.
+
+# Velocity authenticates players; the realm trusts the proxy's forwarded identity.
+online-mode=false
+
+# Only Velocity (on the same machine) may connect. With online-mode=false, a realm reachable on the network would let anyone join as any player, including ops.
+server-ip=127.0.0.1
+
+# Must match servers.json and Velocity's [servers] entry, or the proxy can't reach the realm.
+server-port=__PORT__
+
+# Only players on whitelist.json may join.
+white-list=true
+
+# Players removed from the whitelist are kicked right away instead of staying until they log out.
+enforce-whitelist=true
+
+# Remote console is a password-protected admin shell; MinecraftMgr doesn't use it.
+enable-rcon=false
+
+# The query protocol reveals the player list and plugins to anyone who asks.
+enable-query=false
+
+# JMX exposes JVM internals; not used.
+enable-jmx-monitoring=false

@@ -2,9 +2,10 @@
 
 Pure filesystem -- no subprocess, no network. The jar itself is supplied by
 the caller (see jar_cache_service) rather than fetched here. Writes a
-Velocity-ready server.properties directly (online-mode=false,
-server-ip=127.0.0.1) since every realm this scaffolds is meant to sit
-behind Velocity from its first boot -- no separate patch-after step.
+Velocity-ready server.properties directly from
+tools/templates/server.properties.standard (online-mode=false,
+server-ip=127.0.0.1, whitelist on, ...) since every realm this scaffolds is
+meant to sit behind Velocity from its first boot -- no separate patch-after step.
 """
 
 from __future__ import annotations
@@ -56,7 +57,11 @@ def render_start_sh(*, name: str, port: int, mem_min: str, mem_max: str, java_bi
 
 
 def _render_server_properties(*, port: int) -> str:
-    return f"server-port={port}\nserver-ip=127.0.0.1\nonline-mode=false\nenable-rcon=false\n"
+    # Imported here: server_properties_service imports provision_service, which a
+    # module-level import from this file would pull into scaffold's import chain.
+    from minecraftmgr.services.server_properties_service import render_standard_properties
+
+    return render_standard_properties(port)
 
 
 def scaffold_realm_dir(
