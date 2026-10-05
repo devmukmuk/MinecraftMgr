@@ -4,6 +4,8 @@ REALM_DOMAIN = "gamenightbymike.com"
 SITE_URL = f"https://minecraft.{REALM_DOMAIN}"
 TRIGGER_URL = f"https://trigger.{REALM_DOMAIN}"
 SCREENSHOTS_URL = f"https://shots.{REALM_DOMAIN}/report/"
+# Velocity proxy: the one public Minecraft port on oscar, routing to every realm.
+VELOCITY_PORT = 25565
 
 # Realm statuses in servers.json. "archived" realms live in <data_root>/_archive/<data_dir>
 # (tools/scripts/minecraft_archive_world.sh) and are left out of the page, Autostart and backups.
