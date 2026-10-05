@@ -10,6 +10,7 @@ Minecraft server lifecycle management and oscar deployment toolkit.
 * Server jar/version updates
 * Realm restart (oscar/systemd)
 * Oscar deployment scripts
+* Log reports: unfound gravestones, player activity per realm
 
 ## Development
 
