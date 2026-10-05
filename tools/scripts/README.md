@@ -2,7 +2,8 @@
 
 Oscar-side Minecraft automation, imported verbatim from oscar on 2026-08-18
 (see [docs/architecture/oscar-migration-plan.md](../../docs/architecture/oscar-migration-plan.md#3-port-the-scripts)
-for the full backstory). **Nothing here has been rewritten yet** — these are
+for the full backstory). **Nothing here has been rewritten yet** (except the
+weekly backup's v1.1 changes, 2026-10-05 — see below) — these are
 straight copies of what's actually running, with a short provenance comment
 added to the top of each file. Redeploying them onto oscar in place of the
 untracked originals is a separate manual step: see
@@ -24,7 +25,8 @@ cutover removes that whole directory.
 | `scafold_new_minecraft_server.sh` | `/opt/mc/Scripts/` | Superseded, kept for reference | Replaced by `minecraftmgr realm provision`/`realm activate` ([PROV-design.md](../../docs/epics/PROV-design.md)), confirmed working live on oscar. Still assumes the pre-migration `/srv/minecraft` path. Not planned to be revived — kept here only so the old approach isn't lost. |
 | `scafold_help.txt` | `/opt/mc/Scripts/` | Superseded, kept for reference | Usage example for the script above. |
 | `config_ufw_rules.sh` | `/opt/mc/Scripts/` | Live (manual, run by hand) | Hardcoded `MINECRAFT_PORTS=(26005 26010)` — doesn't cover realms added since, and doesn't know about the shared Velocity port (`25565`). Also mixes in non-Minecraft rules (Samba, Plex, Docker) — fine for oscar as a whole, but worth deciding whether that scope belongs in this repo. |
-| `minecraft_all_in_one_backup_v1.sh` | `/opt/scripts/` (**corrected** 2026-08-18 — see below) | Live (cron, weekly Sun 3am as `minecraft`, confirmed via log output) | Superseded in spirit by `minecraftmgr backup run --all` (see [BAK.md](../../docs/epics/BAK.md)), but that command doesn't yet have retention/pruning ("keep last 3") or a stop/restart cycle, so this is still the one actually cron'd. Don't retire until `minecraftmgr backup` covers both. |
+| `minecraft_all_in_one_backup_v1.sh` | `/opt/scripts/` (**corrected** 2026-08-18 — see below) | Live (cron, weekly Sun 3am as `minecraft`, confirmed via log output) | Superseded in spirit by `minecraftmgr backup run --all` (see [BAK.md](../../docs/epics/BAK.md)), but that command doesn't yet have retention/pruning ("keep last 3") or a stop/restart cycle, so this is still the one actually cron'd. Don't retire until `minecraftmgr backup` covers both. **v1.1 (2026-10-05):** see "Weekly backup v1.1" below. |
+| `minecraft_archive_world.sh` | — (new 2026-10-05) | Manual | Retires an unplayed server: final zip to `/mnt/backup/minecraft/archive/<server>/`, folder parked in `/opt/mc/_archive/`. See below. |
 | `minecraft_single_backup.sh` | `/opt/scripts/` | Newer variant, unclear if cron'd | `BASE_DIR="/srv/minecraft"` is stale post-migration (real path is `/opt/mc`) — would fail as-is against any realm today. Needs the same path fix as everything else, plus a decision on whether this replaces the all-in-one script or the two get merged. |
 | `extract-user-data.py` | `/opt/mc/<realm>/` (one copy per realm) | Live, was triplicated | Was byte-identical in `arbor_1_21_10`, `gravestone_26_1_2`, `river_1_21_1` — consolidated to this one tracked copy. Needs a decision on where the deployed copy should live (once per realm again via a deploy step, or a single shared location realms are pointed at). |
 
@@ -48,6 +50,44 @@ stop`, 2026-08-18 — see the "Deleted" note above), one clean deletion still
 pending (the scaffold script), one no-op that just needs stale content
 fixed (`config_ufw_rules.sh`), and one real open decision (which backup
 script survives once `BAK` gets retention, or whether they merge).
+
+## Weekly backup v1.1 and archiving (2026-10-05)
+
+**Which servers get zipped.** There is no list: every folder in `/opt/mc`
+that has a `server.properties` and whose name doesn't start with `_`.
+`servers.json` is *not* read. As of 2026-10-05 that's 11 servers: the 9 in
+`servers.json` plus `cave_1_20_4` and `poop_1_21_3`, which aren't
+registered and haven't changed since Jan and May 2025. Folders like
+`logs/`, `readme/`, `Scripts/`, `muk_land/` used to log "No backup targets
+found" every week; they're now skipped silently.
+
+**What changed in v1.1:**
+
+- **Unchanged worlds are skipped.** A stopped server is zipped only if a
+  config file or world folder changed since its newest zip; a running server
+  is always zipped. Skipped servers aren't stopped and their zips aren't
+  rotated, so the 3 kept zips are 3 different world states, not 3 copies of
+  one.
+- **Nether and End are included.** v1 zipped only `world/`; Paper keeps the
+  Nether and End in `world_nether/` and `world_the_end/` (arbor, cave_1_21_1,
+  jitterbug, poop_1_21_1, river — ~3.5 GB that was missing from every zip).
+  The folder names follow `level-name` in `server.properties`.
+- A failed `zip` removes the partial file and keeps the older zips; the
+  script exits non-zero.
+- `zip -q`: the log has one line per server instead of every file.
+
+**Archiving a server nobody plays:**
+
+```bash
+sudo -u minecraft /srv/mc/tools/scripts/minecraft_archive_world.sh cave_1_20_4 --dry-run
+sudo -u minecraft /srv/mc/tools/scripts/minecraft_archive_world.sh cave_1_20_4
+```
+
+It zips the whole folder (except `cache/`, `libraries/`, `versions/`) to
+`/mnt/backup/minecraft/archive/cave_1_20_4/cave_1_20_4_<ts>_final.zip`,
+tests it, moves the server's weekly zips into the same folder, and moves
+the server folder to `/opt/mc/_archive/cave_1_20_4`. Nothing is deleted.
+To bring it back, move the folder back out of `_archive/`.
 
 ## Explicitly not imported
 
