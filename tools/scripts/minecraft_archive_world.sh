@@ -81,4 +81,6 @@ for z in "${weekly[@]}"; do
 done
 mv -v "$SERVER_DIR" "$PARKED_DIR"
 
-echo "== done: $name archived. If it's in servers.json, set its status to inactive and note the archive."
+echo "== done: $name archived."
+echo "If it's a realm in servers.json, on the dev box run (then PR, merge, git pull on oscar):"
+echo "  minecraftmgr server update <server_id> --status archived && minecraftmgr web build"

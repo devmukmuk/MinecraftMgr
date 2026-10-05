@@ -89,6 +89,11 @@ tests it, moves the server's weekly zips into the same folder, and moves
 the server folder to `/opt/mc/_archive/cave_1_20_4`. Nothing is deleted.
 To bring it back, move the folder back out of `_archive/`.
 
+If the server is a realm in `servers.json`, also set its status to `archived`
+(`minecraftmgr server update <id> --status archived`, then `minecraftmgr web build`)
+so it drops off the realm-picker page and Autostart; see
+[REG.md](../../docs/epics/REG.md) for active vs inactive vs archived.
+
 ## Explicitly not imported
 
 Found on oscar but deliberately left out — nothing here is lost, just not
