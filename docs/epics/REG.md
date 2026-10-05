@@ -37,6 +37,25 @@ else (backups, deploys) looks realms up here rather than scanning
   passed as options change — `None` means "leave alone", so `update`
   builds a `changes` dict of only the non-`None` options before calling
   `update_server(**changes)`).
+- **Statuses** (2026-10-05): `active`, `inactive`, `archived`
+  (`constants.REALM_STATUSES`); `add`/`update` reject anything else.
+  `list_servers()` leaves archived realms out unless
+  `include_archived=True`, so the page, Autostart, `realm start`,
+  `backup run` and screenshots skip them without each checking; `server
+  list` and `about` pass `include_archived=True`. An archived realm's
+  folder is `<data_root>/_archive/<data_dir>` (`resolve_server_data_dir()`).
+
+  | | active | inactive | archived |
+  |---|---|---|---|
+  | Folder | `/opt/mc/<data_dir>` | `/opt/mc/<data_dir>` | `/opt/mc/_archive/<data_dir>` |
+  | On the page | yes | yes (INACTIVE badge) | no |
+  | Autostart / `realm start` | yes | yes | no |
+  | Weekly zip script | if changed | if changed | never (`_` folder) |
+
+  Archive: `sudo -u minecraft tools/scripts/minecraft_archive_world.sh <data_dir>`,
+  then `minecraftmgr server update <id> --status archived` and
+  `minecraftmgr web build`. Un-archive: move the folder back out of
+  `_archive/`, `server update <id> --status inactive`, `web build`.
 
 ## Open work
 

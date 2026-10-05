@@ -62,7 +62,7 @@ def about() -> None:
     console.print(f"Servers Registry: {settings.servers_json_path}")
     console.print()
 
-    servers = list_servers(settings)
+    servers = list_servers(settings, include_archived=True)
 
     console.print("[bold]Realms[/bold]")
 
