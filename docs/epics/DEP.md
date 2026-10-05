@@ -52,7 +52,7 @@ This epic is documentation- and infra-config-heavy rather than
 - **Deploy = pull, then restart**: `git push` locally → `ssh oscar` →
   `minecraftmgr backup run --all` (safety snapshot, independent of git) →
   `git pull` → `systemctl restart mc-<realm>` for whichever realms
-  changed, or `mc-proxy` if `velocity.toml` changed.
+  changed, or `velocity-proxy` if `velocity.toml` changed.
 - **Rollback** branches on what broke: a code/config problem is a `git
   revert`/`checkout` in `/srv/minecraft` followed by a restart (never
   touches world data); a world-data problem is restoring the affected

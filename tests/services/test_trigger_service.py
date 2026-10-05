@@ -221,3 +221,41 @@ def test_proxy_listening_true_when_port_accepts_connections() -> None:
         assert proxy_listening(port=port, timeout=0.5)
 
     assert not proxy_listening(port=port, timeout=0.5)
+
+
+def test_realm_stop_all_stops_running_realms_including_inactive(settings, monkeypatch) -> None:
+    """realm stop --all stops every running registry realm, active or inactive, and skips the rest."""
+
+    from typer.testing import CliRunner
+
+    from minecraftmgr.cli import app
+    from minecraftmgr.services.registry_service import add_server
+
+    for server_id, status in (("blue", "active"), ("river", "inactive"), ("cave", "inactive")):
+        add_server(
+            settings,
+            ServerEntry(
+                server_id=server_id,
+                name=server_id.title(),
+                status=status,
+                port=26000,
+                minecraft_version="26.2",
+                server_type="paper",
+                jar_source="",
+                data_dir=server_id,
+                created="2026-01-01T00:00:00+00:00",
+            ),
+        )
+    stopped: list[str] = []
+    monkeypatch.setattr("minecraftmgr.commands.realm.load_settings", lambda: settings)
+    monkeypatch.setattr(
+        "minecraftmgr.commands.realm.realm_running", lambda data_dir: data_dir in ("blue", "river")
+    )
+    monkeypatch.setattr(
+        "minecraftmgr.commands.realm.stop_realm", lambda server, _root: stopped.append(server.server_id)
+    )
+
+    result = CliRunner().invoke(app, ["realm", "stop", "--all"])
+
+    assert result.exit_code == 0, result.output
+    assert stopped == ["blue", "river"]
