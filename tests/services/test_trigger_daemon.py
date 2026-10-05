@@ -49,6 +49,7 @@ def running_daemon(
     monkeypatch.setattr(
         trigger_daemon, "realm_running", lambda data_dir, **_: data_dir == "gravestone"
     )
+    monkeypatch.setattr(trigger_daemon, "proxy_listening", lambda: True)
 
     started: list[str] = []
 
@@ -86,7 +87,19 @@ def test_status_reports_running_and_stopped(running_daemon: tuple[str, list[str]
     with urllib.request.urlopen(f"{base_url}/status") as res:
         body = json.loads(res.read())
 
-    assert body == {"gravestone": "running", "jitterbug": "stopped"}
+    assert body == {"gravestone": "running", "jitterbug": "stopped", "_proxy": "running"}
+
+
+def test_status_reports_proxy_stopped(
+    running_daemon: tuple[str, list[str]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """GET /status says _proxy is stopped when Velocity isn't accepting connections."""
+
+    base_url, _ = running_daemon
+    monkeypatch.setattr(trigger_daemon, "proxy_listening", lambda: False)
+
+    with urllib.request.urlopen(f"{base_url}/status") as res:
+        assert json.loads(res.read())["_proxy"] == "stopped"
 
 
 def test_start_with_correct_pin_starts_realm(running_daemon: tuple[str, list[str]]) -> None:

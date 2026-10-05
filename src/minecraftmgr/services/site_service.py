@@ -38,6 +38,8 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
     --good-bg: #e4ecd9;
     --muted: #948c78;
     --muted-bg: #eae4d3;
+    --bad: #a33a2a;
+    --bad-bg: #f6e1da;
     --shadow: 0 1px 2px rgba(38,34,26,0.06), 0 6px 16px -8px rgba(38,34,26,0.18);
     color-scheme: light;
   }}
@@ -56,6 +58,8 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
       --good-bg: #24301f;
       --muted: #6b7280;
       --muted-bg: #232830;
+      --bad: #f08a76;
+      --bad-bg: #3a2220;
       --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 10px 24px -10px rgba(0,0,0,0.55);
       color-scheme: dark;
     }}
@@ -74,6 +78,8 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
     --good-bg: #24301f;
     --muted: #6b7280;
     --muted-bg: #232830;
+    --bad: #f08a76;
+    --bad-bg: #3a2220;
     --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 10px 24px -10px rgba(0,0,0,0.55);
     color-scheme: dark;
   }}
@@ -369,9 +375,26 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
     color: var(--ink-dim);
     opacity: 0.75;
   }}
+  .alert {{
+    margin: 0 0 20px;
+    padding: 12px 16px;
+    border: 1px solid var(--bad);
+    border-radius: 10px;
+    background: var(--bad-bg);
+    color: var(--ink);
+  }}
+  .alert strong {{ color: var(--bad); }}
+  .alert[hidden] {{ display: none; }}
 </style>
 
 <div class="wrap">
+
+  <div class="alert" id="proxy-alert" role="alert" hidden>
+    <strong>Realms can't be joined right now.</strong> The server's entrance (the Velocity proxy) isn't running, so no realm will connect until it's restarted.
+  </div>
+  <div class="alert" id="offline-alert" role="alert" hidden>
+    <strong>Can't reach the game server.</strong> It may be offline or restarting, so the realm status below may be out of date.
+  </div>
 
   <header class="hero">
     <span class="eyebrow">minecraft.{domain}</span>
@@ -441,11 +464,18 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
 
   var TRIGGER_URL = "{trigger_url}";
 
+  function showAlert(id, show) {{
+    var el = document.getElementById(id);
+    if (el) {{ el.hidden = !show; }}
+  }}
+
   function refreshStatus() {{
     fetch(TRIGGER_URL + "/status").then(function (res) {{
       if (!res.ok) {{ throw new Error("bad status"); }}
       return res.json();
     }}).then(function (statuses) {{
+      showAlert("offline-alert", false);
+      showAlert("proxy-alert", statuses._proxy === "stopped");
       document.querySelectorAll(".status[data-realm]").forEach(function (badge) {{
         var realm = badge.getAttribute("data-realm");
         var state = statuses[realm];
@@ -469,7 +499,9 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
         btn.hidden = state !== "stopped";
       }});
     }}).catch(function () {{
-      // Trigger daemon not reachable -- picker stays fully usable without it.
+      // Trigger daemon not reachable (oscar or the tunnel is down) -- picker stays usable.
+      showAlert("proxy-alert", false);
+      showAlert("offline-alert", true);
     }});
   }}
 
@@ -499,6 +531,7 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
   }});
 
   refreshStatus();
+  setInterval(refreshStatus, 60000);
 </script>
 """
 

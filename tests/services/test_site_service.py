@@ -118,3 +118,14 @@ def test_build_site_writes_file(tmp_path: Path) -> None:
     assert result == output
     assert output.exists()
     assert "Gravestone" in output.read_text(encoding="utf-8")
+
+
+def test_render_site_has_hidden_proxy_and_offline_banners() -> None:
+    """Both warning banners ship hidden; the page's status check shows them when needed."""
+
+    html = render_site([])
+
+    assert '<div class="alert" id="proxy-alert" role="alert" hidden>' in html
+    assert '<div class="alert" id="offline-alert" role="alert" hidden>' in html
+    assert 'statuses._proxy === "stopped"' in html
+    assert "setInterval(refreshStatus, 60000)" in html

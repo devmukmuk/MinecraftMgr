@@ -16,7 +16,12 @@ from pathlib import Path
 from minecraftmgr.config.settings import Settings
 from minecraftmgr.services.capacity_service import CapacityError, start_realm_within_capacity
 from minecraftmgr.services.registry_service import list_servers
-from minecraftmgr.services.trigger_service import TriggerError, realm_running, verify_pin
+from minecraftmgr.services.trigger_service import (
+    TriggerError,
+    proxy_listening,
+    realm_running,
+    verify_pin,
+)
 
 
 class TriggerHTTPServer(ThreadingHTTPServer):
@@ -60,6 +65,8 @@ class TriggerHandler(BaseHTTPRequestHandler):
                 server.server_id: "running" if realm_running(server.data_dir) else "stopped"
                 for server in servers
             }
+            # "_proxy" can't clash with a realm id; the page shows a banner when it's stopped.
+            statuses["_proxy"] = "running" if proxy_listening() else "stopped"
             self._json(200, statuses)
             return
 

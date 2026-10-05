@@ -9,11 +9,13 @@ from __future__ import annotations
 
 import hmac
 import re
+import socket
 import subprocess
 import time
 from pathlib import Path
 from typing import Callable
 
+from minecraftmgr.constants import VELOCITY_PORT
 from minecraftmgr.models.server_entry import ServerEntry
 
 CommandRunner = Callable[..., "subprocess.CompletedProcess[str]"]
@@ -32,6 +34,18 @@ def realm_running(data_dir: str, *, runner: CommandRunner = _default_runner) -> 
 
     result = runner(["screen", "-ls"])
     return bool(re.search(rf"\.{re.escape(data_dir)}\s", result.stdout))
+
+
+def proxy_listening(
+    host: str = "127.0.0.1", port: int = VELOCITY_PORT, timeout: float = 1.0
+) -> bool:
+    """Return whether the Velocity proxy accepts connections (players can reach realms)."""
+
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
 
 
 def start_realm(

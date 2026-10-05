@@ -204,3 +204,20 @@ def test_stop_realm_falls_back_to_kill_when_stuff_does_not_take(tmp_path: Path) 
     kill_calls = [call for call in runner.calls if call[0] == "kill"]
     assert len(kill_calls) == 1
     assert set(kill_calls[0][1:]) == {"1111", "2222"}
+
+
+def test_proxy_listening_true_when_port_accepts_connections() -> None:
+    """proxy_listening is True while something is listening on the port."""
+
+    import socket
+
+    from minecraftmgr.services.trigger_service import proxy_listening
+
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        listener.listen()
+        port = listener.getsockname()[1]
+
+        assert proxy_listening(port=port, timeout=0.5)
+
+    assert not proxy_listening(port=port, timeout=0.5)
