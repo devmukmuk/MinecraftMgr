@@ -24,6 +24,7 @@ from rich.table import Table
 from minecraftmgr.config import load_settings
 from minecraftmgr.config.settings import Settings
 from minecraftmgr.models.server_entry import ServerEntry
+from minecraftmgr.services.backup_service import resolve_server_data_dir
 from minecraftmgr.services.capacity_service import CapacityError, start_realm_within_capacity
 from minecraftmgr.services.jar_cache_service import JarCacheError, ensure_jar_cached
 from minecraftmgr.services.player_service import active_players
@@ -41,6 +42,11 @@ from minecraftmgr.services.realm_inspect_service import (
 )
 from minecraftmgr.services.realm_scaffold_service import ScaffoldError, scaffold_realm_dir
 from minecraftmgr.services.realm_validate_service import fix_start_sh, validate_start_sh
+from minecraftmgr.services.server_properties_service import (
+    fix_server_properties,
+    fix_velocity_trust,
+    validate_server_properties,
+)
 from minecraftmgr.services.registry_service import list_servers
 from minecraftmgr.services.trigger_service import TriggerError, realm_running, stop_realm
 
@@ -406,16 +412,23 @@ def validate_cmd(
     server_id: Optional[str] = typer.Argument(
         None, help="Realm id to validate. Omit with --all to validate every registered realm."
     ),
-    all_servers: bool = typer.Option(False, "--all", help="Validate every registered realm"),
-    fix: bool = typer.Option(
-        False, "--fix", help="Regenerate start.sh from the canonical template for any realm with issues"
+    all_servers: bool = typer.Option(
+        False, "--all", help="Validate every registered realm (active and inactive)"
     ),
+    fix: bool = typer.Option(
+        False, "--fix", help="Offer to bring each realm with issues up to the standard"
+    ),
+    yes: bool = typer.Option(False, "--yes", "-y", help="With --fix, don't ask before changing"),
 ) -> None:
-    """Check each realm's start.sh against tools/templates/start.sh.template; --fix to regenerate it.
+    """Check realms against the standard: server.properties, Velocity trust, start.sh.
 
-    Only checks the IPv4 flag and the port matching servers.json -- MEM_MIN/
-    MEM_MAX aren't modeled in the registry yet, so --fix preserves whatever
-    the file already has for those rather than guessing a new value.
+    server.properties is compared with tools/templates/server.properties.standard
+    (whitelist on, bound to 127.0.0.1 behind Velocity, RCON/query/JMX off);
+    Paper realms' config/paper-global.yml must trust Velocity with the current
+    forwarding secret; start.sh needs the IPv4 flag and the servers.json port.
+    --fix shows the changes and asks per realm (--yes to skip asking); it only
+    touches those settings, and they take effect at the realm's next restart.
+    Run as `minecraft` on oscar: the realm files aren't writable by other users.
     """
 
     if bool(server_id) == all_servers:
@@ -423,34 +436,81 @@ def validate_cmd(
         raise typer.Exit(code=1)
 
     settings = load_settings()
-    targets = _resolve_targets(settings, server_id, all_servers)
+    # Unlike start/stop, --all here means active *and* inactive: inactive realms can still be
+    # started with Autostart, so they need the same settings.
+    targets = list_servers(settings) if all_servers else _resolve_targets(settings, server_id, False)
+    secret_path = settings.data_root / "_proxy" / "forwarding.secret"
+    secret = secret_path.read_text(encoding="utf-8").strip() if secret_path.exists() else None
+    if secret is None:
+        console.print(f"[yellow]Can't check Velocity secrets: {secret_path} not found[/yellow]")
 
     any_issues = False
 
     for server in targets:
-        realm_dir = settings.data_root / server.data_dir
-        validation = validate_start_sh(realm_dir, server)
+        realm_dir = resolve_server_data_dir(settings, server)
+        start_sh = validate_start_sh(realm_dir, server)
+        props = validate_server_properties(realm_dir, server, velocity_secret=secret)
 
-        if validation.ok:
+        for warning in props.warnings:
+            console.print(f"[yellow]{server.server_id}: {warning}[/yellow]")
+
+        if start_sh.ok and props.ok:
             console.print(f"[green]OK[/green] {server.server_id}")
             continue
 
         any_issues = True
-        console.print(f"[yellow]{server.server_id}[/yellow]")
-        for issue in validation.issues:
-            console.print(f"  - {issue}")
+        console.print(f"[bold yellow]{server.server_id}[/bold yellow] ({realm_dir})")
+
+        if props.issues:
+            table = Table(show_header=True)
+            table.add_column("server.properties")
+            table.add_column("Now")
+            table.add_column("Standard")
+            table.add_column("Why", overflow="fold")
+            for issue in props.issues:
+                table.add_row(issue.key, issue.current or "(missing)", issue.expected, issue.reason)
+            console.print(table)
+        for problem in props.velocity_issues:
+            console.print(f"  - Velocity trust: {problem}")
+        for issue in start_sh.issues:
+            console.print(f"  - start.sh: {issue}")
 
         if not fix:
             continue
-
-        if not validation.exists:
-            console.print("  [red]Cannot fix: start.sh doesn't exist (needs provision/activate)[/red]")
+        if not yes and not typer.confirm(f"Apply the standard to {server.server_id}?"):
+            console.print("  Skipped")
             continue
 
-        fix_start_sh(realm_dir, server, validation)
-        mem_min = validation.current_mem_min or "2G (default)"
-        mem_max = validation.current_mem_max or "4G (default)"
-        console.print(f"  [green]Fixed[/green] (mem_min={mem_min}, mem_max={mem_max} preserved)")
+        try:
+            if props.issues:
+                fix_server_properties(realm_dir, props.issues)
+                count = len(props.issues)
+                console.print(f"  [green]Fixed[/green] server.properties ({count} settings)")
+            if props.velocity_issues:
+                if secret is None:
+                    console.print("  [red]Can't fix Velocity trust without the forwarding secret[/red]")
+                else:
+                    fix_velocity_trust(realm_dir, secret)
+                    console.print("  [green]Fixed[/green] config/paper-global.yml Velocity trust")
+            if not start_sh.ok:
+                if not start_sh.exists:
+                    console.print("  [red]Can't fix start.sh: it doesn't exist (provision first)[/red]")
+                else:
+                    fix_start_sh(realm_dir, server, start_sh)
+                    mem_min = start_sh.current_mem_min or "2G (default)"
+                    mem_max = start_sh.current_mem_max or "4G (default)"
+                    console.print(
+                        f"  [green]Fixed[/green] start.sh (mem_min={mem_min}, mem_max={mem_max} preserved)"
+                    )
+        except PermissionError as exc:
+            console.print(f"  [red]{exc}[/red] -- run as minecraft: sudo -u minecraft ...")
+            any_issues = True
+            continue
+
+        console.print(
+            f"  Takes effect at the next restart: minecraftmgr realm stop {server.server_id} && "
+            f"minecraftmgr realm start {server.server_id}"
+        )
 
     if any_issues and not fix and not all_servers:
         raise typer.Exit(code=1)

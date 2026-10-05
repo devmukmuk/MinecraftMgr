@@ -236,6 +236,47 @@ issues and, with `--fix`, rewrites `start.sh` for anything found (or reports
 it can't when `start.sh` doesn't exist at all — that needs
 `provision`/`activate`, not `validate`).
 
+### Realm standard: server.properties + Velocity trust (2026-10-05)
+
+The Paper migration left `server.properties` inconsistent across realms:
+`jitterbug` and `testrealm` had `white-list=false` (anyone who reached them
+through Velocity could join), and `arbor`, `gatorland`, `gravestone`,
+`jitterbug`, `testrealm` had `enforce-whitelist=false`. New realms were no
+better: the scaffold wrote only port/ip/online-mode/rcon, so every new realm
+booted with the whitelist off.
+
+- **`tools/templates/server.properties.standard`** is the one definition of
+  the standard: `online-mode=false`, `server-ip=127.0.0.1`,
+  `server-port=__PORT__` (from servers.json), `white-list=true`,
+  `enforce-whitelist=true`, `enable-rcon=false`, `enable-query=false`,
+  `enable-jmx-monitoring=false`. The comment above each line is the "why"
+  shown in reports. Gameplay settings (difficulty, pvp, ...) aren't in it.
+  `realm_scaffold_service` now renders new realms' `server.properties` from
+  it too.
+- **`services/server_properties_service.py`** compares a realm with the
+  standard and, for Paper realms, checks `config/paper-global.yml`'s
+  `proxies.velocity` (`enabled`, `online-mode`, `secret` equal to
+  `_proxy/forwarding.secret`; the secret is never printed). With
+  `online-mode=false` that block plus `server-ip=127.0.0.1` is what stops
+  anyone joining as any player. An empty `whitelist.json` is a warning.
+  The fix rewrites only the listed keys in place (other lines, order,
+  comments and line endings kept; missing keys appended) and re-applies the
+  Velocity block with `patch_velocity_trust()`.
+- **`realm validate <id>|--all [--fix] [--yes]`** (also `minecraftmgr
+  validate ...`) now reports all three: a table of server.properties
+  differences with the reason, Velocity trust problems, and the start.sh
+  checks above. `--fix` asks per realm (`--yes` doesn't ask); changes take
+  effect at the realm's next restart. `--all` here includes inactive realms
+  (unlike `realm start --all`), since Autostart can start them. Run as
+  `minecraft` on oscar: `paper-global.yml` is group-read-only.
+
+First run against oscar (read-only): `enforce-whitelist` off on arbor,
+gatorland, gravestone, jitterbug, testrealm; `white-list` off on jitterbug
+and testrealm (testrealm's whitelist.json is also empty); the start.sh IPv4
+flag from the section above is *still* missing on arbor, cave, poop, river
+(the old `--all` only checked active realms, so it never reported them);
+Velocity trust correct everywhere.
+
 ## Capacity cap and on-demand idle eviction (2026-08-18)
 
 Same incident, same day: since oscar can't safely run every registered

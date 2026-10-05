@@ -65,6 +65,8 @@ def test_scaffold_writes_velocity_ready_server_properties(tmp_path: Path, fake_j
     assert "server-port=26020" in properties
     assert "server-ip=127.0.0.1" in properties
     assert "online-mode=false" in properties
+    assert "white-list=true" in properties
+    assert "enforce-whitelist=true" in properties
 
 
 def test_scaffold_renders_start_sh_with_substitutions(tmp_path: Path, fake_jar: Path) -> None:
