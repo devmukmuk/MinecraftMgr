@@ -89,7 +89,7 @@
   },
   "testrealm": {
     "name": "Test Realm",
-    "status": "inactive",
+    "status": "archived",
     "port": 26099,
     "minecraft_version": "26.2",
     "server_type": "paper",
