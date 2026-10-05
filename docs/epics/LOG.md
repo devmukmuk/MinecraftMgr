@@ -39,9 +39,11 @@ MinecraftMgr split off from; MineOps had them, MinecraftMgr didn't.
 ## Not done (from the MineOps design)
 
 - JSON/CSV report output (`--write-report`) for automation.
-- Realms not in `servers.json` (e.g. `cave_1_20_4`, `poop_1_21_3`, or
-  anything moved to `/opt/mc/_archive/`) can only be scanned with
-  `gravestones scan --logs`; `users report` covers registry realms only.
+- Realms not in `servers.json` (e.g. `cave_1_20_4`, `poop_1_21_3`, archived
+  2026-10-05 without ever being registered) can only be scanned with
+  `gravestones scan --logs /opt/mc/_archive/<folder>/logs`. Registered realms
+  set to `archived` (e.g. `testrealm`) are still in `users report`, listed
+  last, with logs read from `/opt/mc/_archive/<data_dir>/logs`.
 
 Base, portal and farm coordinates people asked to keep are in
 [GRAVESTONES-LOCATIONS.md](../GRAVESTONES-LOCATIONS.md) (also from MineOps).

@@ -82,7 +82,7 @@ def test_users_report_cli_groups_active_then_inactive(settings: Settings, monkey
     _log(settings, blue, "2026-05-01-1.log.gz", [JOIN])
     monkeypatch.setattr("minecraftmgr.commands.users.load_settings", lambda: settings)
     monkeypatch.setattr(
-        "minecraftmgr.commands.users.list_servers", lambda _s, active_only=False: [river, blue]
+        "minecraftmgr.commands.users.list_servers", lambda _s, **_kw: [river, blue]
     )
 
     result = CliRunner().invoke(app, ["users", "report"])
@@ -106,3 +106,31 @@ def test_gravestones_scan_cli_needs_server_or_logs(tmp_path: Path) -> None:
 
     assert result.exit_code == 0, result.output
     assert "Not found: 1" in result.output and "(1, 2, 3)" in result.output
+
+
+def test_users_report_includes_archived_realms(settings: Settings, monkeypatch) -> None:
+    """Archived realms are listed last, with logs read from <data_root>/_archive/<data_dir>."""
+
+    from dataclasses import replace
+
+    from minecraftmgr.services.registry_service import add_server
+
+    blue = _entry("blue", "active")
+    old = replace(_entry("testrealm", "archived"), data_dir="testrealm")
+    add_server(settings, blue)
+    add_server(settings, old)
+    _log(settings, blue, "2026-05-01-1.log.gz", [JOIN])
+    archived_logs = settings.data_root / "_archive" / "testrealm" / "logs"
+    archived_logs.mkdir(parents=True)
+    (archived_logs / "2026-08-17-1.log").write_text(
+        JOIN.replace("Mohawk", "Tester") + "\n", encoding="utf-8"
+    )
+    monkeypatch.setattr("minecraftmgr.commands.users.load_settings", lambda: settings)
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["users", "report"])
+
+    assert result.exit_code == 0, result.output
+    assert result.output.index("Active realms") < result.output.index("Archived realms")
+    assert "Tester" in result.output[result.output.index("Archived realms"):]
+    assert "Archived realms" not in runner.invoke(app, ["users", "report", "--active-only"]).output
