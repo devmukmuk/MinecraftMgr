@@ -68,5 +68,6 @@ class RealmUserReport:
     log_folder: Path
     users: dict[str, UserActivity] = field(default_factory=dict)
     ops: set[str] = field(default_factory=set)  # lowercased names from ops.json
+    op_names: list[str] = field(default_factory=list)  # names from ops.json as written
     whitelist: list[str] = field(default_factory=list)  # names from whitelist.json
     warnings: list[str] = field(default_factory=list)
