@@ -19,12 +19,16 @@ console = Console()
 @app.command("report")
 def report(
     server_id: Optional[str] = typer.Argument(None, help="Only this realm. Omit for every realm."),
-    active_only: bool = typer.Option(False, "--active-only", help="Skip inactive realms."),
+    active_only: bool = typer.Option(False, "--active-only", help="Skip inactive and archived realms."),
 ) -> None:
-    """Show each player's first and latest day on each realm, active realms first."""
+    """Show each player's first and latest day on each realm: active, inactive, then archived.
+
+    Archived realms are included (their logs are under <data_root>/_archive/) so
+    retiring a realm doesn't lose who played on it; --active-only skips both.
+    """
 
     settings = load_settings()
-    servers = list_servers(settings, active_only=active_only)
+    servers = list_servers(settings, active_only=active_only, include_archived=True)
 
     if server_id:
         servers = [entry for entry in servers if entry.server_id == server_id]
@@ -36,7 +40,8 @@ def report(
 
     groups = (
         ("Active realms", [realm for realm in reports if realm.status == "active"]),
-        ("Inactive realms", [realm for realm in reports if realm.status != "active"]),
+        ("Inactive realms", [realm for realm in reports if realm.status == "inactive"]),
+        ("Archived realms", [realm for realm in reports if realm.status == "archived"]),
     )
     for title, group in groups:
         if not group:
