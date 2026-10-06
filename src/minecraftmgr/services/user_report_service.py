@@ -32,12 +32,15 @@ def log_date(path: Path) -> date:
     return datetime.fromtimestamp(path.stat().st_mtime).date()
 
 
-def _names(path: Path) -> list[str]:
-    """Return the player names in an ops.json/whitelist.json (empty if missing or unreadable)."""
+def _names(path: Path, warnings: list[str]) -> list[str]:
+    """Return the player names in an ops.json/whitelist.json; warn if it exists but can't be read."""
 
+    if not path.exists():
+        return []
     try:
-        return [str(item["name"]) for item in json.loads(path.read_text(encoding="utf-8"))]
-    except (OSError, ValueError, TypeError, KeyError):
+        return [str(item["name"]) for item in json.loads(path.read_text(encoding="utf-8-sig"))]
+    except (OSError, ValueError, TypeError, KeyError) as exc:
+        warnings.append(f"Could not read {path.name} ({type(exc).__name__}: {exc}); treated as empty")
         return []
 
 
@@ -50,9 +53,11 @@ def build_realm_report(log_folder: Path, entry: ServerEntry) -> RealmUserReport:
         name=entry.name,
         status=entry.status.lower(),
         log_folder=log_folder,
-        ops={name.lower() for name in _names(realm_dir / "ops.json")},
-        whitelist=_names(realm_dir / "whitelist.json"),
     )
+    op_names = _names(realm_dir / "ops.json", report.warnings)
+    report.ops = {name.lower() for name in op_names}
+    report.op_names = op_names
+    report.whitelist = _names(realm_dir / "whitelist.json", report.warnings)
 
     if not log_folder.is_dir():
         report.warnings.append(f"Log folder does not exist: {log_folder}")
@@ -88,11 +93,12 @@ def build_user_report(settings: Settings, servers: list[ServerEntry]) -> list[Re
 
 
 def realm_rows(report: RealmUserReport) -> list[dict]:
-    """Merge players seen in the logs with the whitelist, flagging ops.
+    """Merge players seen in the logs with the whitelist and ops, flagging ops.
 
     Each row: player, first_seen/latest_seen (ISO date, or None if never played), days,
     op, whitelisted. Players who have played come first (newest first), then whitelisted
-    players who haven't played yet, A-Z. Names match case-insensitively.
+    players and ops who haven't played yet, A-Z (ops can join without being whitelisted).
+    Names match case-insensitively.
     """
 
     whitelisted = {name.lower() for name in report.whitelist}
@@ -109,7 +115,7 @@ def realm_rows(report: RealmUserReport) -> list[dict]:
     ]
     seen = {user.lower() for user in report.users}
     not_played: list[str] = []
-    for name in report.whitelist:  # first spelling wins; names are case-insensitive
+    for name in [*report.whitelist, *report.op_names]:  # first spelling wins
         if name.lower() not in seen:
             seen.add(name.lower())
             not_played.append(name)
@@ -120,7 +126,7 @@ def realm_rows(report: RealmUserReport) -> list[dict]:
             "latest_seen": None,
             "days": 0,
             "op": name.lower() in report.ops,
-            "whitelisted": True,
+            "whitelisted": name.lower() in whitelisted,
         }
         for name in sorted(not_played, key=str.lower)
     ]

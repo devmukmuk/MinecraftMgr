@@ -201,3 +201,43 @@ def test_users_report_cli_marks_ops_and_not_yet(settings: Settings, monkeypatch)
 
     assert result.exit_code == 0, result.output
     assert "OP" in result.output and "Newbie" in result.output and "not yet" in result.output
+
+
+def test_ops_who_never_played_and_are_not_whitelisted_are_listed(settings: Settings) -> None:
+    """Ops can join without being whitelisted, so a never-played op still gets a row."""
+
+    import json
+
+    from minecraftmgr.services.user_report_service import players_by_realm
+
+    gator = _entry("gatorland", "active")
+    _log(settings, gator, "2026-08-17-1.log.gz", [JOIN.replace("Mohawk", "FourEight1516")])
+    realm_dir = settings.data_root / gator.data_dir
+    (realm_dir / "ops.json").write_text(
+        json.dumps([{"name": "DarkNixxus"}, {"name": "FourEight1516"}]), encoding="utf-8"
+    )
+    (realm_dir / "whitelist.json").write_text(json.dumps([{"name": "FourEight1516"}]), encoding="utf-8")
+
+    rows = players_by_realm(settings, [gator])["gatorland"]
+
+    assert [(r["player"], r["op"], r["whitelisted"], r["days"]) for r in rows] == [
+        ("FourEight1516", True, True, 1),
+        ("DarkNixxus", True, False, 0),
+    ]
+
+
+def test_broken_ops_json_is_a_warning_not_silence(settings: Settings) -> None:
+    """An ops.json that isn't valid JSON (e.g. a missing comma) is reported, not ignored."""
+
+    from minecraftmgr.services.user_report_service import build_user_report
+
+    blue = _entry("blue", "active")
+    _log(settings, blue, "2026-05-01-1.log.gz", [JOIN])
+    (settings.data_root / blue.data_dir / "ops.json").write_text(
+        '[{"name": "a"} {"name": "b"}]', encoding="utf-8"  # missing comma
+    )
+
+    (report,) = build_user_report(settings, [blue])
+
+    assert report.ops == set()
+    assert "ops.json" in report.warnings[0] and "treated as empty" in report.warnings[0]
