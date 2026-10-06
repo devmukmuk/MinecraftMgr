@@ -150,3 +150,12 @@ def test_render_site_players_table_headers_sort() -> None:
     assert 'btn.className = "sort-btn"' in html
     assert 'details.getAttribute("data-sort") || "latest_seen"' in html
     assert "aria-sort" in html
+
+
+def test_render_site_players_table_marks_ops_and_not_yet() -> None:
+    """The player table script adds a yellow OP badge and shows "not yet" for never-played."""
+
+    html = render_site([_entry("gatorland")])
+
+    assert 'badge.className = "op-badge"' in html and ".op-badge {" in html
+    assert 'td.textContent = "not yet"' in html

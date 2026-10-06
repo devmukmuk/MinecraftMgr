@@ -8,6 +8,7 @@ joined or left. Dated log names (``2026-05-01-1.log.gz``) give the day;
 
 from __future__ import annotations
 
+import json
 import re
 from datetime import date, datetime
 from pathlib import Path
@@ -31,14 +32,26 @@ def log_date(path: Path) -> date:
     return datetime.fromtimestamp(path.stat().st_mtime).date()
 
 
-def build_realm_report(log_folder: Path, entry: ServerEntry) -> RealmUserReport:
-    """Build player activity for one realm from its logs folder."""
+def _names(path: Path) -> list[str]:
+    """Return the player names in an ops.json/whitelist.json (empty if missing or unreadable)."""
 
+    try:
+        return [str(item["name"]) for item in json.loads(path.read_text(encoding="utf-8"))]
+    except (OSError, ValueError, TypeError, KeyError):
+        return []
+
+
+def build_realm_report(log_folder: Path, entry: ServerEntry) -> RealmUserReport:
+    """Build player activity for one realm from its logs folder, plus its ops and whitelist."""
+
+    realm_dir = log_folder.parent
     report = RealmUserReport(
         server_id=entry.server_id,
         name=entry.name,
         status=entry.status.lower(),
         log_folder=log_folder,
+        ops={name.lower() for name in _names(realm_dir / "ops.json")},
+        whitelist=_names(realm_dir / "whitelist.json"),
     )
 
     if not log_folder.is_dir():
@@ -74,18 +87,47 @@ def build_user_report(settings: Settings, servers: list[ServerEntry]) -> list[Re
     ]
 
 
-def players_by_realm(settings: Settings, servers: list[ServerEntry]) -> dict[str, list[dict]]:
-    """Return {server_id: [{player, first_seen, latest_seen, days}]} newest first, for the page."""
+def realm_rows(report: RealmUserReport) -> list[dict]:
+    """Merge players seen in the logs with the whitelist, flagging ops.
 
-    return {
-        realm.server_id: [
-            {
-                "player": user.player,
-                "first_seen": user.first_seen.isoformat(),
-                "latest_seen": user.latest_seen.isoformat(),
-                "days": len(user.days_seen),
-            }
-            for user in sorted(realm.users.values(), key=lambda u: u.latest_seen, reverse=True)
-        ]
-        for realm in build_user_report(settings, servers)
-    }
+    Each row: player, first_seen/latest_seen (ISO date, or None if never played), days,
+    op, whitelisted. Players who have played come first (newest first), then whitelisted
+    players who haven't played yet, A-Z. Names match case-insensitively.
+    """
+
+    whitelisted = {name.lower() for name in report.whitelist}
+    rows = [
+        {
+            "player": user.player,
+            "first_seen": user.first_seen.isoformat(),
+            "latest_seen": user.latest_seen.isoformat(),
+            "days": len(user.days_seen),
+            "op": user.player.lower() in report.ops,
+            "whitelisted": user.player.lower() in whitelisted,
+        }
+        for user in sorted(report.users.values(), key=lambda u: u.latest_seen, reverse=True)
+    ]
+    seen = {user.lower() for user in report.users}
+    not_played: list[str] = []
+    for name in report.whitelist:  # first spelling wins; names are case-insensitive
+        if name.lower() not in seen:
+            seen.add(name.lower())
+            not_played.append(name)
+    rows += [
+        {
+            "player": name,
+            "first_seen": None,
+            "latest_seen": None,
+            "days": 0,
+            "op": name.lower() in report.ops,
+            "whitelisted": True,
+        }
+        for name in sorted(not_played, key=str.lower)
+    ]
+    return rows
+
+
+def players_by_realm(settings: Settings, servers: list[ServerEntry]) -> dict[str, list[dict]]:
+    """Return {server_id: realm_rows(...)} for the realm page."""
+
+    return {realm.server_id: realm_rows(realm) for realm in build_user_report(settings, servers)}

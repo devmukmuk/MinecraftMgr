@@ -327,6 +327,19 @@
   .players-body td.num, .players-body th.num { text-align: right; }
   .players-body .player { color: var(--ink); white-space: normal; overflow-wrap: anywhere; }
   .lock { font-size: 0.75em; }
+  .op-badge {
+    display: inline-block;
+    margin-left: 0.15rem;
+    padding: 0 0.3rem;
+    border-radius: 4px;
+    background: #f5c518;
+    color: #1d1a10;
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 1.35;
+    vertical-align: 1px;
+  }
+  .players-body td.not-yet { font-style: italic; opacity: 0.7; }
 
   .gallery-section {
     margin-top: 2.4rem;
@@ -783,6 +796,11 @@
   function sortedRows(rows, key, dir) {
     return rows.slice().sort(function (a, b) {
       var x = a[key], y = b[key];
+      // Never played (no dates) always sorts last, whichever way the column is sorted.
+      if (x === null || y === null) {
+        if (x !== y) { return x === null ? 1 : -1; }
+        return a.player.toLowerCase() < b.player.toLowerCase() ? -1 : 1;
+      }
       if (typeof x === "string") { x = x.toLowerCase(); y = y.toLowerCase(); }
       if (x < y) { return -dir; }
       if (x > y) { return dir; }
@@ -824,8 +842,22 @@
       var tr = tbody.insertRow();
       PLAYER_COLUMNS.forEach(function (col) {
         var td = tr.insertCell();
-        td.textContent = String(r[col[1]]);
+        var value = r[col[1]];
         if (col[2]) { td.className = col[2]; }
+        if (value === null) {
+          td.textContent = "not yet";
+          td.className = "not-yet";
+        } else {
+          td.textContent = String(value);
+        }
+        if (col[1] === "player" && r.op) {
+          var badge = document.createElement("span");
+          badge.className = "op-badge";
+          badge.textContent = "OP";
+          badge.title = "Operator (ops.json)";
+          td.appendChild(document.createTextNode(" "));
+          td.appendChild(badge);
+        }
       });
     });
     body.appendChild(table);
