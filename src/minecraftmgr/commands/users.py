@@ -6,11 +6,12 @@ from typing import Optional
 
 import typer
 from rich.console import Console
+from rich.markup import escape
 from rich.table import Table
 
 from minecraftmgr.config import load_settings
 from minecraftmgr.services.registry_service import list_servers
-from minecraftmgr.services.user_report_service import build_user_report
+from minecraftmgr.services.user_report_service import build_user_report, realm_rows
 
 app = typer.Typer(help="Player activity reports from realm server logs.", no_args_is_help=True)
 console = Console()
@@ -21,7 +22,9 @@ def report(
     server_id: Optional[str] = typer.Argument(None, help="Only this realm. Omit for every realm."),
     active_only: bool = typer.Option(False, "--active-only", help="Skip inactive and archived realms."),
 ) -> None:
-    """Show each player's first and latest day on each realm: active, inactive, then archived.
+    """Show each realm's players: active, inactive, then archived realms.
+
+    Ops are marked OP; whitelisted players who never joined are listed as "not yet".
 
     Archived realms are included (their logs are under <data_root>/_archive/) so
     retiring a realm doesn't lose who played on it; --active-only skips both.
@@ -55,7 +58,8 @@ def report(
             console.print(f"[bold]{realm.server_id}[/bold] - {realm.name}  ({realm.log_folder})")
             for warning in realm.warnings:
                 console.print(f"[yellow]{warning}[/yellow]")
-            if not realm.users:
+            rows = realm_rows(realm)
+            if not rows:
                 console.print("No players found.")
                 continue
 
@@ -64,12 +68,14 @@ def report(
             table.add_column("First seen")
             table.add_column("Latest seen")
             table.add_column("Days", justify="right")
-            users = sorted(realm.users.values(), key=lambda item: item.latest_seen, reverse=True)
-            for user in users:
+            for row in rows:
+                name = escape(row["player"])
+                if row["op"]:
+                    name += " [black on yellow] OP [/]"
                 table.add_row(
-                    user.player,
-                    user.first_seen.isoformat(),
-                    user.latest_seen.isoformat(),
-                    str(len(user.days_seen)),
+                    name,
+                    row["first_seen"] or "[dim]not yet[/dim]",
+                    row["latest_seen"] or "[dim]not yet[/dim]",
+                    str(row["days"]),
                 )
             console.print(table)

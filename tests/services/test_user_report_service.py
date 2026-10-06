@@ -149,5 +149,55 @@ def test_players_by_realm_is_json_ready_newest_first(settings: Settings) -> None
 
     assert [row["player"] for row in data["blue"]] == ["Newer", "Mohawk"]
     assert data["blue"][1] == {
-        "player": "Mohawk", "first_seen": "2026-05-01", "latest_seen": "2026-05-01", "days": 1
+        "player": "Mohawk",
+        "first_seen": "2026-05-01",
+        "latest_seen": "2026-05-01",
+        "days": 1,
+        "op": False,
+        "whitelisted": False,
     }
+
+
+def test_rows_flag_ops_and_add_whitelisted_players_who_never_played(settings: Settings) -> None:
+    """Ops are flagged; whitelisted players with no log lines follow, A-Z, once per name."""
+
+    import json
+
+    from minecraftmgr.services.user_report_service import players_by_realm
+
+    blue = _entry("blue", "active")
+    _log(settings, blue, "2026-05-01-1.log.gz", [JOIN])
+    realm_dir = settings.data_root / blue.data_dir
+    (realm_dir / "ops.json").write_text(json.dumps([{"name": "mohawk", "level": 4}]), encoding="utf-8")
+    (realm_dir / "whitelist.json").write_text(
+        json.dumps([{"name": "Mohawk"}, {"name": "zed"}, {"name": "Amy"}, {"name": "amy"}]),
+        encoding="utf-8",
+    )
+
+    rows = players_by_realm(settings, [blue])["blue"]
+
+    assert [(r["player"], r["op"], r["whitelisted"], r["days"]) for r in rows] == [
+        ("Mohawk", True, True, 1),
+        ("Amy", False, True, 0),
+        ("zed", False, True, 0),
+    ]
+    assert rows[1]["first_seen"] is None and rows[1]["latest_seen"] is None
+
+
+def test_users_report_cli_marks_ops_and_not_yet(settings: Settings, monkeypatch) -> None:
+    """The terminal report shows OP next to ops and "not yet" for never-played players."""
+
+    import json
+
+    blue = _entry("blue", "active")
+    _log(settings, blue, "2026-05-01-1.log.gz", [JOIN])
+    realm_dir = settings.data_root / blue.data_dir
+    (realm_dir / "ops.json").write_text(json.dumps([{"name": "Mohawk"}]), encoding="utf-8")
+    (realm_dir / "whitelist.json").write_text(json.dumps([{"name": "Newbie"}]), encoding="utf-8")
+    monkeypatch.setattr("minecraftmgr.commands.users.load_settings", lambda: settings)
+    monkeypatch.setattr("minecraftmgr.commands.users.list_servers", lambda _s, **_kw: [blue])
+
+    result = CliRunner().invoke(app, ["users", "report"])
+
+    assert result.exit_code == 0, result.output
+    assert "OP" in result.output and "Newbie" in result.output and "not yet" in result.output
