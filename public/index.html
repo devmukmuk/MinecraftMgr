@@ -313,6 +313,17 @@
     white-space: nowrap;
   }
   .players-body th { font-weight: 600; color: var(--ink); }
+  .sort-btn {
+    font: inherit;
+    font-weight: 600;
+    color: inherit;
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .sort-btn:hover, .sort-btn:focus-visible { color: var(--accent); }
   .players-body td.num, .players-body th.num { text-align: right; }
   .players-body .player { color: var(--ink); white-space: normal; overflow-wrap: anywhere; }
   .lock { font-size: 0.75em; }
@@ -760,6 +771,25 @@
     } catch (e) {}
   }
 
+  // Columns: [label, row key, cell class, first-click direction]. Click a header to sort
+  // by it, click again to reverse. Default: most recent player first.
+  var PLAYER_COLUMNS = [
+    ["Player", "player", "player", 1],
+    ["First seen", "first_seen", "", -1],
+    ["Latest seen", "latest_seen", "", -1],
+    ["Days", "days", "num", -1]
+  ];
+
+  function sortedRows(rows, key, dir) {
+    return rows.slice().sort(function (a, b) {
+      var x = a[key], y = b[key];
+      if (typeof x === "string") { x = x.toLowerCase(); y = y.toLowerCase(); }
+      if (x < y) { return -dir; }
+      if (x > y) { return dir; }
+      return a.player.toLowerCase() < b.player.toLowerCase() ? -1 : 1;
+    });
+  }
+
   function renderPlayers(details) {
     var body = details.querySelector(".players-body");
     var rows = (playersData || {})[details.getAttribute("data-realm")] || [];
@@ -768,21 +798,34 @@
       body.textContent = "No one has played here yet.";
       return;
     }
+    var key = details.getAttribute("data-sort") || "latest_seen";
+    var dir = Number(details.getAttribute("data-dir") || -1);
     var table = document.createElement("table");
     var head = table.createTHead().insertRow();
-    [["Player", ""], ["First seen", ""], ["Latest seen", ""], ["Days", "num"]].forEach(function (col) {
+    PLAYER_COLUMNS.forEach(function (col) {
       var th = document.createElement("th");
-      th.textContent = col[0];
-      if (col[1]) { th.className = col[1]; }
+      if (col[2] === "num") { th.className = "num"; }
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "sort-btn";
+      btn.textContent = col[0] + (col[1] === key ? (dir > 0 ? " ▲" : " ▼") : "");
+      th.setAttribute("aria-sort", col[1] === key ? (dir > 0 ? "ascending" : "descending") : "none");
+      btn.addEventListener("click", function () {
+        var newDir = col[1] === key ? -dir : col[3];
+        details.setAttribute("data-sort", col[1]);
+        details.setAttribute("data-dir", String(newDir));
+        renderPlayers(details);
+      });
+      th.appendChild(btn);
       head.appendChild(th);
     });
     var tbody = table.createTBody();
-    rows.forEach(function (r) {
+    sortedRows(rows, key, dir).forEach(function (r) {
       var tr = tbody.insertRow();
-      [[r.player, "player"], [r.first_seen, ""], [r.latest_seen, ""], [String(r.days), "num"]].forEach(function (cell) {
+      PLAYER_COLUMNS.forEach(function (col) {
         var td = tr.insertCell();
-        td.textContent = cell[0];
-        if (cell[1]) { td.className = cell[1]; }
+        td.textContent = String(r[col[1]]);
+        if (col[2]) { td.className = col[2]; }
       });
     });
     body.appendChild(table);

@@ -140,3 +140,13 @@ def test_render_site_has_pin_gated_players_section_per_card() -> None:
     assert 'TRIGGER_URL + "/players"' in html
     assert '"X-Autostart-Pin": pin' in html
     assert "FourEight" not in html  # no player data baked into the public page
+
+
+def test_render_site_players_table_headers_sort() -> None:
+    """Player table headers are sort buttons; latest seen, newest first, is the default."""
+
+    html = render_site([_entry("gatorland")])
+
+    assert 'btn.className = "sort-btn"' in html
+    assert 'details.getAttribute("data-sort") || "latest_seen"' in html
+    assert "aria-sort" in html
