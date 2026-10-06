@@ -246,3 +246,45 @@ def test_cors_header_present_on_status(running_daemon: tuple[str, list[str]]) ->
 
     with urllib.request.urlopen(f"{base_url}/status") as res:
         assert res.headers["Access-Control-Allow-Origin"] == "*"
+
+
+def _post_players(base_url: str, pin: str) -> urllib.request.Request:
+    return urllib.request.Request(
+        f"{base_url}/players", method="POST", headers={"X-Autostart-Pin": pin}
+    )
+
+
+def test_players_requires_the_family_pin(running_daemon: tuple[str, list[str]]) -> None:
+    """POST /players with a wrong or missing PIN is 403 and reveals nothing."""
+
+    base_url, _ = running_daemon
+
+    for pin in ("0000", ""):
+        with pytest.raises(urllib.error.HTTPError) as exc_info:
+            urllib.request.urlopen(_post_players(base_url, pin))
+        assert exc_info.value.code == 403
+        assert b"FourEight" not in exc_info.value.read()
+
+
+def test_players_returns_activity_per_realm_and_caches(
+    running_daemon: tuple[str, list[str]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With the PIN, /players returns each realm's players; logs are re-read at most every 5 min."""
+
+    base_url, _ = running_daemon
+    calls: list[list[str]] = []
+
+    def fake_players(_settings, servers):
+        calls.append([server.server_id for server in servers])
+        return {"gravestone": [{"player": "FourEight1516", "first_seen": "2025-09-30",
+                                "latest_seen": "2026-10-05", "days": 209}]}
+
+    monkeypatch.setattr(trigger_daemon, "players_by_realm", fake_players)
+
+    for _ in range(2):
+        with urllib.request.urlopen(_post_players(base_url, "1234")) as res:
+            body = json.loads(res.read())
+            assert res.headers["Access-Control-Allow-Origin"] == "*"
+
+    assert body["gravestone"][0]["days"] == 209
+    assert calls == [["gravestone", "jitterbug"]]  # archived "cave" left out, second call cached

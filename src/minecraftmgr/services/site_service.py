@@ -325,6 +325,19 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
     gap: 0.3rem;
   }}
 
+  .players-body {{ margin-top: 0.5rem; font-size: 0.82rem; color: var(--ink-dim); }}
+  .players-body table {{ width: 100%; border-collapse: collapse; }}
+  .players-body th, .players-body td {{
+    text-align: left;
+    padding: 0.25rem 0.4rem;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }}
+  .players-body th {{ font-weight: 600; color: var(--ink); }}
+  .players-body td.num, .players-body th.num {{ text-align: right; }}
+  .players-body .player {{ color: var(--ink); white-space: normal; overflow-wrap: anywhere; }}
+  .lock {{ font-size: 0.75em; }}
+
   .gallery-section {{
     margin-top: 2.4rem;
     padding-top: 1.6rem;
@@ -530,6 +543,83 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
     }});
   }});
 
+  // "Who's played here": player names and dates are family-only, so the trigger
+  // daemon wants the same PIN as Autostart. Remembered for this tab only.
+  var playersData = null;
+
+  function storedPin() {{
+    try {{ return window.sessionStorage.getItem("familyPin"); }} catch (e) {{ return null; }}
+  }}
+
+  function rememberPin(pin) {{
+    try {{
+      if (pin) {{ window.sessionStorage.setItem("familyPin", pin); }}
+      else {{ window.sessionStorage.removeItem("familyPin"); }}
+    }} catch (e) {{}}
+  }}
+
+  function renderPlayers(details) {{
+    var body = details.querySelector(".players-body");
+    var rows = (playersData || {{}})[details.getAttribute("data-realm")] || [];
+    body.textContent = "";
+    if (!rows.length) {{
+      body.textContent = "No one has played here yet.";
+      return;
+    }}
+    var table = document.createElement("table");
+    var head = table.createTHead().insertRow();
+    [["Player", ""], ["First seen", ""], ["Latest seen", ""], ["Days", "num"]].forEach(function (col) {{
+      var th = document.createElement("th");
+      th.textContent = col[0];
+      if (col[1]) {{ th.className = col[1]; }}
+      head.appendChild(th);
+    }});
+    var tbody = table.createTBody();
+    rows.forEach(function (r) {{
+      var tr = tbody.insertRow();
+      [[r.player, "player"], [r.first_seen, ""], [r.latest_seen, ""], [String(r.days), "num"]].forEach(function (cell) {{
+        var td = tr.insertCell();
+        td.textContent = cell[0];
+        if (cell[1]) {{ td.className = cell[1]; }}
+      }});
+    }});
+    body.appendChild(table);
+  }}
+
+  function loadPlayers(details) {{
+    var body = details.querySelector(".players-body");
+    var pin = storedPin() || window.prompt("Family PIN to see who's played:");
+    if (!pin) {{ details.open = false; return; }}
+    body.textContent = "Loading…";
+    fetch(TRIGGER_URL + "/players", {{
+      method: "POST",
+      headers: {{ "X-Autostart-Pin": pin }}
+    }}).then(function (res) {{
+      if (res.status === 403) {{
+        rememberPin(null);
+        details.open = false;
+        window.alert("Wrong PIN.");
+        return null;
+      }}
+      if (!res.ok) {{ throw new Error("bad players"); }}
+      return res.json();
+    }}).then(function (data) {{
+      if (!data) {{ return; }}
+      rememberPin(pin);
+      playersData = data;
+      document.querySelectorAll("details.players[open]").forEach(renderPlayers);
+    }}).catch(function () {{
+      body.textContent = "Couldn't reach the game server.";
+    }});
+  }}
+
+  document.querySelectorAll("details.players").forEach(function (details) {{
+    details.addEventListener("toggle", function () {{
+      if (!details.open) {{ return; }}
+      if (playersData) {{ renderPlayers(details); }} else {{ loadPlayers(details); }}
+    }});
+  }});
+
   refreshStatus();
   setInterval(refreshStatus, 60000);
 </script>
@@ -554,6 +644,10 @@ _CARD_TEMPLATE = """      <article class="card">
             <li>Multiplayer &rarr; Add Server.</li>
             <li>Paste the address above. Leave the port blank.</li>
           </ol>
+        </details>
+        <details class="howto players" data-realm="{server_id}">
+          <summary>Who's played here <span class="lock" aria-label="family PIN">&#128274;</span></summary>
+          <div class="players-body"></div>
         </details>
         <div class="live-row" data-realm="{server_id}" hidden>
           <button class="autostart-btn" data-realm="{server_id}" hidden>Autostart</button>

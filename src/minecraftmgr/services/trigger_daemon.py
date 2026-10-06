@@ -10,6 +10,7 @@ the `mike` automation account.
 from __future__ import annotations
 
 import json
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -22,6 +23,10 @@ from minecraftmgr.services.trigger_service import (
     realm_running,
     verify_pin,
 )
+from minecraftmgr.services.user_report_service import players_by_realm
+
+
+PLAYERS_CACHE_SECONDS = 300
 
 
 class TriggerHTTPServer(ThreadingHTTPServer):
@@ -37,6 +42,7 @@ class TriggerHTTPServer(ThreadingHTTPServer):
         super().__init__(server_address, handler_class)
         self.mgr_settings = mgr_settings
         self.pin_path = pin_path
+        self.players_cache: tuple[float, dict] | None = None
 
 
 class TriggerHandler(BaseHTTPRequestHandler):
@@ -72,7 +78,27 @@ class TriggerHandler(BaseHTTPRequestHandler):
 
         self._json(404, {"error": "not found"})
 
+    def _players(self) -> dict:
+        """Return per-realm player activity, re-reading the logs at most every PLAYERS_CACHE_SECONDS."""
+
+        cached = self.server.players_cache
+        if cached is not None and time.monotonic() - cached[0] < PLAYERS_CACHE_SECONDS:
+            return cached[1]
+
+        settings = self.server.mgr_settings
+        data = players_by_realm(settings, list_servers(settings))
+        self.server.players_cache = (time.monotonic(), data)
+        return data
+
     def do_POST(self) -> None:
+        if self.path == "/players":
+            # Player names and play dates are family-only: same PIN as Autostart.
+            if not verify_pin(self.server.pin_path, self.headers.get("X-Autostart-Pin", "")):
+                self._json(403, {"error": "invalid pin"})
+                return
+            self._json(200, self._players())
+            return
+
         if not self.path.startswith("/start/"):
             self._json(404, {"error": "not found"})
             return

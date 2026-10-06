@@ -129,3 +129,14 @@ def test_render_site_has_hidden_proxy_and_offline_banners() -> None:
     assert '<div class="alert" id="offline-alert" role="alert" hidden>' in html
     assert 'statuses._proxy === "stopped"' in html
     assert "setInterval(refreshStatus, 60000)" in html
+
+
+def test_render_site_has_pin_gated_players_section_per_card() -> None:
+    """Each card gets a collapsed "Who's played here" section filled in by script after a PIN."""
+
+    html = render_site([_entry("gatorland")])
+
+    assert '<details class="howto players" data-realm="gatorland">' in html
+    assert 'TRIGGER_URL + "/players"' in html
+    assert '"X-Autostart-Pin": pin' in html
+    assert "FourEight" not in html  # no player data baked into the public page

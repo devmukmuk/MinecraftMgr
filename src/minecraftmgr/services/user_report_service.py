@@ -72,3 +72,20 @@ def build_user_report(settings: Settings, servers: list[ServerEntry]) -> list[Re
         build_realm_report(resolve_server_data_dir(settings, entry) / "logs", entry)
         for entry in servers
     ]
+
+
+def players_by_realm(settings: Settings, servers: list[ServerEntry]) -> dict[str, list[dict]]:
+    """Return {server_id: [{player, first_seen, latest_seen, days}]} newest first, for the page."""
+
+    return {
+        realm.server_id: [
+            {
+                "player": user.player,
+                "first_seen": user.first_seen.isoformat(),
+                "latest_seen": user.latest_seen.isoformat(),
+                "days": len(user.days_seen),
+            }
+            for user in sorted(realm.users.values(), key=lambda u: u.latest_seen, reverse=True)
+        ]
+        for realm in build_user_report(settings, servers)
+    }

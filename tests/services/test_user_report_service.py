@@ -134,3 +134,20 @@ def test_users_report_includes_archived_realms(settings: Settings, monkeypatch) 
     assert result.output.index("Active realms") < result.output.index("Archived realms")
     assert "Tester" in result.output[result.output.index("Archived realms"):]
     assert "Archived realms" not in runner.invoke(app, ["users", "report", "--active-only"]).output
+
+
+def test_players_by_realm_is_json_ready_newest_first(settings: Settings) -> None:
+    """players_by_realm gives the page plain dicts, most recent player first."""
+
+    from minecraftmgr.services.user_report_service import players_by_realm
+
+    blue = _entry("blue", "active")
+    _log(settings, blue, "2026-05-01-1.log.gz", [JOIN])
+    _log(settings, blue, "2026-06-01-1.log.gz", [JOIN.replace("Mohawk", "Newer")])
+
+    data = players_by_realm(settings, [blue])
+
+    assert [row["player"] for row in data["blue"]] == ["Newer", "Mohawk"]
+    assert data["blue"][1] == {
+        "player": "Mohawk", "first_seen": "2026-05-01", "latest_seen": "2026-05-01", "days": 1
+    }
