@@ -61,6 +61,7 @@ checkout can't push.
 | [Add/change a Cloudflare CNAME](modify-cloudflare-cname.md) | None | No API token on oscar |
 | [Test with a local hosts override](modify-local-hosts-override.md) | None (by nature — dev-box-local) | |
 | [Modify the whitelist](modify-whitelist.md) | None | Live console injection possible without a restart |
+| [Bedrock crossplay (Geyser + Floodgate)](bedrock-crossplay.md) | None | One-time proxy setup, plus per-realm key/ViaVersion and per-player whitelist steps |
 | [Modify server ops](modify-ops.md) | None | Live console injection possible without a restart |
 | [Delete a realm completely](delete-realm.md) | None | Irreversible — read this one fully before running anything |
 | [Convert vanilla/Fabric/Forge → Paper](convert-engine.md) | Deliberately manual/guided | One direction only — see that doc for why Paper → vanilla isn't a thing here |
@@ -74,6 +75,10 @@ anyone in the family on downloading, installing, and using
 [Prism Launcher](https://prismlauncher.org) to join our realms, including
 handling multiple Minecraft accounts on one computer. No CLI, no oscar
 access, nothing `minecraftmgr` touches.
+
+[bedrock-player-guide.md](bedrock-player-guide.md) is the same kind of guide
+for Bedrock players (Windows, Switch, phones, Xbox): adding the server,
+finding it under LAN Games on the Switch, and `/server <realm>`.
 
 ## Automating these, one at a time
 
