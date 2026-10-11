@@ -61,6 +61,16 @@ Getting a player's UUID for a manual edit (rather than letting the in-game
 prefer the live console command above unless the realm is already down for
 another reason.
 
+## Bedrock players
+
+Bedrock players (via Geyser/Floodgate) are named `.Gamertag` and have a
+`00000000-0000-0000-000X-…` UUID, which isn't a Mojang account, so
+`whitelist add .Gamertag` can't resolve them. Use Floodgate's
+`fwhitelist add <gamertag>` on realms that have Floodgate, or, the method that
+always works, read the name and UUID from the proxy log after the player's
+first (refused) join, append it to `whitelist.json`, and `whitelist reload`.
+Full steps: [bedrock-crossplay.md](bedrock-crossplay.md#per-player-whitelisting-a-bedrock-player).
+
 ## Verify
 
 - In-game: the added player can join; a removed player is kicked (if online)
