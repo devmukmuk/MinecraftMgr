@@ -63,6 +63,7 @@ checkout can't push.
 | [Modify the whitelist](modify-whitelist.md) | None | Live console injection possible without a restart |
 | [Bedrock crossplay (Geyser + Floodgate)](bedrock-crossplay.md) | None | One-time proxy setup, plus per-realm key/ViaVersion and per-player whitelist steps |
 | [Modify server ops](modify-ops.md) | None | Live console injection possible without a restart |
+| [Hardcore realm: set up, Archive & Reset](hardcore-realm.md) | Full: Archive & Reset button on the page (family PIN) | Only after every player in the run has died |
 | [Delete a realm completely](delete-realm.md) | None | Irreversible — read this one fully before running anything |
 | [Convert vanilla/Fabric/Forge → Paper](convert-engine.md) | Deliberately manual/guided | One direction only — see that doc for why Paper → vanilla isn't a thing here |
 | [Redeploy oscar's Minecraft scripts from git](redeploy-oscar-scripts.md) | None | One-time cutover, `sudo`/`minecraft`-user gated |

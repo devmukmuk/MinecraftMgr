@@ -12,6 +12,10 @@ VELOCITY_PORT = 25565
 REALM_STATUSES = ("active", "inactive", "archived")
 ARCHIVE_DIR_NAME = "_archive"
 
+# Realm game modes in servers.json. "hardcore" realms (hardcore=true in server.properties)
+# get their own card on the page and an Archive & Reset action once every player has died.
+REALM_MODES = ("survival", "hardcore")
+
 COMPANY_NAME = "Game Night by Mike"
 COMPANY_YEAR = 2026
 LOGO_VERSION = 1

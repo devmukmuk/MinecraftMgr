@@ -19,6 +19,7 @@ class ServerEntry:
     data_dir: str
     created: str
     notes: str = ""
+    mode: str = "survival"
 
     def to_dict(self) -> dict:
         """Return the servers.json field shape for this entry (excludes server_id, the dict key)."""
@@ -33,6 +34,7 @@ class ServerEntry:
             "data_dir": self.data_dir,
             "created": self.created,
             "notes": self.notes,
+            "mode": self.mode,
         }
 
     @staticmethod
@@ -50,4 +52,5 @@ class ServerEntry:
             data_dir=str(data.get("data_dir", server_id)),
             created=str(data.get("created", "")),
             notes=str(data.get("notes", "")),
+            mode=str(data.get("mode", "survival")),
         )

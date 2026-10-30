@@ -22,7 +22,8 @@ A single JSON object keyed by `server_id`. Each value is the entry's fields
     "jar_source": "https://papermc.io/downloads",
     "data_dir": "gatorland",
     "created": "2026-08-15T21:00:00+00:00",
-    "notes": ""
+    "notes": "",
+    "mode": "survival"
   },
   "arbor": {
     "name": "Arbor",
@@ -33,7 +34,8 @@ A single JSON object keyed by `server_id`. Each value is the entry's fields
     "jar_source": "https://papermc.io/downloads",
     "data_dir": "arbor",
     "created": "2026-05-01T10:00:00+00:00",
-    "notes": "retired, kept for backup history"
+    "notes": "retired, kept for backup history",
+    "mode": "survival"
   }
 }
 ```
@@ -51,6 +53,7 @@ A single JSON object keyed by `server_id`. Each value is the entry's fields
 | `data_dir`           | str  | Folder name under `data_root` holding the live server (world, jar, `server.properties`) |
 | `created`             | str  | ISO 8601 timestamp, set when the realm is registered                  |
 | `notes`               | str  | Free-text, defaults to `""`                                           |
+| `mode`                | str  | `survival` (default) or `hardcore`. **hardcore**: `hardcore=true` in `server.properties`; listed first on the page with its own look, a PIN-gated run summary, and an Archive & Reset action once every player has died (see [hardcore-realm.md](../workflows/hardcore-realm.md)) |
 
 ## Conventions
 
