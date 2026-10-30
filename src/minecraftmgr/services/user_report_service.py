@@ -20,7 +20,10 @@ from minecraftmgr.services.backup_service import resolve_server_data_dir
 from minecraftmgr.services.gravestone_service import iter_log_files, read_log_file
 
 LOG_DATE_RE = re.compile(r"(?P<date>\d{4}-\d{2}-\d{2})")
-PLAYER_EVENT_RE = re.compile(r"\]: (?P<player>[A-Za-z0-9_]+) (?:joined|left) the game")
+# Since 26.3 these lines read "...]: System chat: <player> joined the game".
+PLAYER_EVENT_RE = re.compile(
+    r"\]: (?:System chat: )?(?P<player>[A-Za-z0-9_]+) (?:joined|left) the game"
+)
 
 
 def log_date(path: Path) -> date:

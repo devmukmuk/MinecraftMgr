@@ -3,8 +3,9 @@
 A run lasts from a fresh world until the last player dies. The summary is
 built from two sources in the realm folder:
 
-- ``<level-name>/stats/<uuid>.json`` (names from ``usercache.json``): exact
-  play time, and a death count that catches a death the logs missed.
+- ``<level-name>/players/stats/<uuid>.json`` (26.x; ``<level-name>/stats/``
+  before that), with names from ``usercache.json``: exact play time, and a
+  death count that catches a death the logs missed.
 - ``logs/``: when each player first joined, and the timestamped death
   message that gives the order of deaths. Death messages have no fixed
   shape, so a line counts as a death when it is a known player's name
@@ -41,9 +42,11 @@ from minecraftmgr.utils.hashing import sha256_file
 RUNS_FILE_NAME = "hardcore_runs.json"
 MAX_SEED_LENGTH = 64
 
-# "[12:34:56 INFO]: msg" (Paper) or "[12:34:56] [Server thread/INFO]: msg" (vanilla).
+# "[12:34:56 INFO]: msg" (Paper) or "[12:34:56] [Server thread/INFO]: msg" (vanilla). Since 26.3,
+# join/leave/death lines read "...: System chat: <player> joined the game"; the prefix is dropped.
 LOG_LINE_RE = re.compile(
-    r"^\[(?P<time>\d\d:\d\d:\d\d)[^\]]*\](?: \[[^\]]*\])?: (?P<msg>.*?)\s*$", re.MULTILINE
+    r"^\[(?P<time>\d\d:\d\d:\d\d)[^\]]*\](?: \[[^\]]*\])?: (?:System chat: )?(?P<msg>.*?)\s*$",
+    re.MULTILINE,
 )
 JOINED_RE = re.compile(r"^(?P<player>[A-Za-z0-9_]+) joined the game$")
 
@@ -84,7 +87,11 @@ def _level_name(realm_dir: Path) -> str:
 
 
 def world_dirs(realm_dir: Path) -> list[Path]:
-    """Return the world folders a reset clears: overworld, nether, end (Paper's layout)."""
+    """Return the world folders a reset clears.
+
+    26.x keeps every dimension (and player data) inside <level>/; older Paper versions
+    split the nether and end into <level>_nether and <level>_the_end.
+    """
 
     level = _level_name(realm_dir)
     return [realm_dir / level, realm_dir / f"{level}_nether", realm_dir / f"{level}_the_end"]
@@ -101,8 +108,12 @@ def _read_stats(realm_dir: Path) -> dict[str, tuple[int | None, int]]:
         pass
 
     stats: dict[str, tuple[int | None, int]] = {}
-    stats_dir = realm_dir / _level_name(realm_dir) / "stats"
-    for path in sorted(stats_dir.glob("*.json")) if stats_dir.is_dir() else []:
+    level_dir = realm_dir / _level_name(realm_dir)
+    # 26.x keeps player data under <level>/players/; older versions under <level>/stats.
+    paths = sorted((level_dir / "players" / "stats").glob("*.json")) or sorted(
+        (level_dir / "stats").glob("*.json")
+    )
+    for path in paths:
         name = names.get(path.stem)
         if name is None:
             continue
