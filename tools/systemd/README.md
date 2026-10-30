@@ -7,6 +7,7 @@ commands are in [docs/workflows/reboot-recovery.md](../../docs/workflows/reboot-
 |---|---|---|
 | `velocity-proxy.service` | `/etc/systemd/system/velocity-proxy.service` | Velocity proxy: starts at boot, restarts on any exit, no terminal/JLine (avoids the Java 25 crash) |
 | `minecraft-autostart-stop.conf` | `/etc/systemd/system/minecraft-autostart.service.d/stop.conf` | Makes the existing realm autostart unit stop running realms cleanly on shutdown |
+| `cloudflared-oscar-ssh.service` | `/etc/systemd/system/cloudflared-oscar-ssh.service` | Cloudflare Tunnel for SSH from off the LAN. Install steps are in [docs/workflows/remote-ssh-travel.md](../../docs/workflows/remote-ssh-travel.md), not reboot-recovery.md |
 
 Already on oscar but not (yet) tracked here: `minecraft-autostart.service`,
 `mc-trigger.service`, `cloudflared-mc-trigger.service` (copies in
