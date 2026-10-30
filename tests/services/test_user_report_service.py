@@ -241,3 +241,17 @@ def test_broken_ops_json_is_a_warning_not_silence(settings: Settings) -> None:
 
     assert report.ops == set()
     assert "ops.json" in report.warnings[0] and "treated as empty" in report.warnings[0]
+
+
+def test_system_chat_prefix_from_26_3_is_recognized(settings: Settings) -> None:
+    """Since 26.3, join/leave lines read "...]: System chat: <player> joined the game"."""
+
+    blue = _entry("blue", "active")
+    _log(settings, blue, "2026-10-30-1.log.gz", [
+        "[09:00:56] [Server thread/INFO]: System chat: FourEight1516 joined the game",
+        "[09:01:09] [Server thread/INFO]: System chat: FourEight1516 left the game",
+    ])
+
+    (report,) = build_user_report(settings, [blue])
+
+    assert list(report.users) == ["FourEight1516"]

@@ -252,3 +252,52 @@ def test_hardcore_report_covers_only_hardcore_realms(settings: Settings) -> None
     assert list(report) == ["hardcore"]
     assert report["hardcore"]["current"]["last_alive"] == "Cal"
     assert report["hardcore"]["runs"] == []
+
+
+def test_summary_reads_the_26_3_log_prefix_and_players_stats_folder(tmp_path: Path) -> None:
+    """26.3 writes "System chat: " before join/death lines and keeps stats in world/players/stats."""
+
+    realm_dir = tmp_path / "hardcore"
+    (realm_dir / "logs").mkdir(parents=True)
+    (realm_dir / "usercache.json").write_text(
+        json.dumps([{"name": "Amy", "uuid": UUIDS["Amy"]}]), encoding="utf-8"
+    )
+    (realm_dir / "logs" / "2026-10-30-1.log.gz").write_bytes(gzip.compress(
+        b"[09:25:08] [Server thread/INFO]: System chat: Amy joined the game\n"
+        b"[09:25:08] [Server thread/INFO]: Amy[/192.168.1.68:39870] logged in with entity id 1223\n"
+        b"[09:31:33] [Server thread/INFO]: System chat: Amy was shot by Skeleton\n"
+        b"[09:31:39] [Server thread/INFO]: System chat: Amy left the game\n"
+    ))
+    stats_dir = realm_dir / "world" / "players" / "stats"
+    stats_dir.mkdir(parents=True)
+    (stats_dir / f"{UUIDS['Amy']}.json").write_text(
+        json.dumps({"stats": {"minecraft:custom": {"minecraft:play_time": 10251, "minecraft:deaths": 1}}}),
+        encoding="utf-8",
+    )
+
+    run = build_run_summary(realm_dir)
+
+    assert [p.player for p in run.players] == ["Amy"]
+    assert run.players[0].death_message == "Amy was shot by Skeleton"
+    assert run.players[0].play_seconds == 512
+    assert run.everyone_dead and run.last_alive == "Amy"
+
+
+def test_stats_alone_count_a_player_on_the_26_3_layout(tmp_path: Path) -> None:
+    """With no usable log lines, the players/stats files still list the player and their death."""
+
+    realm_dir = tmp_path / "hardcore"
+    realm_dir.mkdir()
+    (realm_dir / "usercache.json").write_text(
+        json.dumps([{"name": "Amy", "uuid": UUIDS["Amy"]}]), encoding="utf-8"
+    )
+    stats_dir = realm_dir / "world" / "players" / "stats"
+    stats_dir.mkdir(parents=True)
+    (stats_dir / f"{UUIDS['Amy']}.json").write_text(
+        json.dumps({"stats": {"minecraft:custom": {"minecraft:deaths": 1}}}), encoding="utf-8"
+    )
+
+    run = build_run_summary(realm_dir)
+
+    assert run.everyone_dead
+    assert run.players[0].player == "Amy"
