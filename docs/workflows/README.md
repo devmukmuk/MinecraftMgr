@@ -59,7 +59,7 @@ checkout can't push.
 | [Restore a realm from backup](restore-from-backup.md) | None | |
 | [Update a realm's jar version](update-jar-version.md) | None | |
 | [Add/change a Cloudflare CNAME](modify-cloudflare-cname.md) | None | No API token on oscar |
-| [Test with a local hosts override](modify-local-hosts-override.md) | None (by nature — dev-box-local) | |
+| [Play or test from inside the house (hosts override)](modify-local-hosts-override.md) | None (by nature, per PC) | Needed for every new realm on home PCs. Symptom without it: `Connection timed out: getsockopt` after the first join |
 | [Modify the whitelist](modify-whitelist.md) | None | Live console injection possible without a restart |
 | [Upgrade the Velocity proxy](upgrade-velocity.md) | None | Needed when a realm moves to a Minecraft version the proxy doesn't support yet ("Incompatible client!") |
 | [Bedrock crossplay (Geyser + Floodgate)](bedrock-crossplay.md) | None | One-time proxy setup, plus per-realm key/ViaVersion and per-player whitelist steps |

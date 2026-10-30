@@ -63,7 +63,13 @@ Registered in `servers.json` as `hardcore`, port `26666`, Minecraft 26.3
    `Incompatible client! Please use 1.7.2-<version>`, the proxy is older than
    the realm. That happened with 26.3 on Velocity 4.0.0. See
    [upgrade-velocity.md](upgrade-velocity.md).
-6. **Whitelist the players**, as described in
+6. **Add the hosts line on each PC at home.** Add
+   `192.168.1.113 hardcore.gamenightbymike.com` to
+   `C:\Windows\System32\drivers\etc\hosts`, then run `ipconfig /flushdns`.
+   Without it, the first join from inside the house works, and every rejoin
+   fails with `Connection timed out: getsockopt`. See
+   [modify-local-hosts-override.md](modify-local-hosts-override.md).
+7. **Whitelist the players**, as described in
    [modify-whitelist.md](modify-whitelist.md).
 
 To turn an existing realm into a hardcore one, run `server update <id> --mode
