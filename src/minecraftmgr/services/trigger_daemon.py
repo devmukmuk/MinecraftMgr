@@ -1,4 +1,4 @@
-"""HTTP daemon behind the AUTOSTART button on the realm-picker page.
+"""HTTP daemon behind the AUTOSTART (and hardcore ARCHIVE & RESET) buttons on the realm-picker page.
 
 Binds to localhost only. Internet reachability comes from a Cloudflare
 Tunnel (cloudflared) routing a public hostname to this local port -- never
@@ -10,12 +10,15 @@ the `mike` automation account.
 from __future__ import annotations
 
 import json
+import tarfile
+import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from minecraftmgr.config.settings import Settings
 from minecraftmgr.services.capacity_service import CapacityError, start_realm_within_capacity
+from minecraftmgr.services.hardcore_service import HardcoreError, archive_and_reset, hardcore_report
 from minecraftmgr.services.registry_service import list_servers
 from minecraftmgr.services.trigger_service import (
     TriggerError,
@@ -43,6 +46,9 @@ class TriggerHTTPServer(ThreadingHTTPServer):
         self.mgr_settings = mgr_settings
         self.pin_path = pin_path
         self.players_cache: tuple[float, dict] | None = None
+        # Realms mid-reset: Autostart refuses them so a start can't race the world being deleted.
+        self.resetting: set[str] = set()
+        self.resetting_lock = threading.Lock()
 
 
 class TriggerHandler(BaseHTTPRequestHandler):
@@ -61,7 +67,7 @@ class TriggerHandler(BaseHTTPRequestHandler):
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "X-Autostart-Pin")
+        self.send_header("Access-Control-Allow-Headers", "X-Autostart-Pin, Content-Type")
         self.end_headers()
 
     def do_GET(self) -> None:
@@ -90,13 +96,65 @@ class TriggerHandler(BaseHTTPRequestHandler):
         self.server.players_cache = (time.monotonic(), data)
         return data
 
+    def _body_json(self) -> dict:
+        """Return the request's JSON object body, or {} if there isn't a valid one."""
+
+        try:
+            length = min(int(self.headers.get("Content-Length", 0)), 4096)
+            data = json.loads(self.rfile.read(length) or b"{}")
+        except ValueError:
+            return {}
+        return data if isinstance(data, dict) else {}
+
+    def _reset(self, realm_id: str) -> None:
+        servers = {server.server_id: server for server in list_servers(self.server.mgr_settings)}
+        server = servers.get(realm_id)
+
+        if server is None:
+            self._json(404, {"error": f"unknown realm '{realm_id}'"})
+            return
+
+        with self.server.resetting_lock:
+            if realm_id in self.server.resetting:
+                self._json(409, {"error": "a reset is already running"})
+                return
+            self.server.resetting.add(realm_id)
+
+        try:
+            run = archive_and_reset(
+                self.server.mgr_settings, server, str(self._body_json().get("seed", ""))
+            )
+        except HardcoreError as exc:
+            self._json(409, {"error": str(exc)})
+            return
+        except (OSError, tarfile.TarError) as exc:
+            self._json(500, {"error": f"reset failed: {exc}"})
+            return
+        finally:
+            with self.server.resetting_lock:
+                self.server.resetting.discard(realm_id)
+
+        self.server.players_cache = None
+        self._json(200, {"status": "reset", "run": run.to_dict()})
+
     def do_POST(self) -> None:
-        if self.path == "/players":
+        if self.path in ("/players", "/hardcore") or self.path.startswith("/reset/"):
             # Player names and play dates are family-only: same PIN as Autostart.
             if not verify_pin(self.server.pin_path, self.headers.get("X-Autostart-Pin", "")):
                 self._json(403, {"error": "invalid pin"})
                 return
+
+        if self.path == "/players":
             self._json(200, self._players())
+            return
+
+        if self.path == "/hardcore":
+            settings = self.server.mgr_settings
+            self._json(200, hardcore_report(settings, list_servers(settings)))
+            return
+
+        if self.path.startswith("/reset/"):
+            self._reset(self.path[len("/reset/") :])
             return
 
         if not self.path.startswith("/start/"):
@@ -116,6 +174,10 @@ class TriggerHandler(BaseHTTPRequestHandler):
 
         if server is None:
             self._json(404, {"error": f"unknown realm '{realm_id}'"})
+            return
+
+        if realm_id in self.server.resetting:
+            self._json(409, {"error": f"'{realm_id}' is being reset"})
             return
 
         try:

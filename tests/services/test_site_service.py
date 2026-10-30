@@ -159,3 +159,33 @@ def test_render_site_players_table_marks_ops_and_not_yet() -> None:
 
     assert 'badge.className = "op-badge"' in html and ".op-badge {" in html
     assert 'td.textContent = "not yet"' in html
+
+
+def test_render_site_hardcore_card_is_marked_and_has_reset_form() -> None:
+    """A hardcore realm gets its own card style, badge, run summary and Archive & Reset form."""
+
+    html = render_site([_entry("hardcore", mode="hardcore")])
+
+    assert '<article class="card hardcore">' in html
+    assert 'class="mode-badge"' in html
+    assert '<details class="howto hardcore-runs" data-realm="hardcore">' in html
+    assert '<button class="reset-btn" data-realm="hardcore">Archive &amp; Reset</button>' in html
+    assert 'name="seed"' in html and "Leave blank for a random seed" in html
+    assert 'TRIGGER_URL + "/reset/" + realm' in html
+    assert 'TRIGGER_URL + "/hardcore"' in html
+
+
+def test_render_site_survival_card_has_no_hardcore_parts() -> None:
+    html = render_site([_entry("gatorland")])
+
+    assert '<article class="card">' in html
+    assert '<span class="mode-badge">' not in html
+    assert '<form class="reset-form"' not in html
+    assert '<details class="howto hardcore-runs"' not in html
+
+
+def test_render_site_lists_hardcore_realms_first() -> None:
+    html = render_site([_entry("arbor"), _entry("hardcore", mode="hardcore"), _entry("blue")])
+
+    assert html.index("hardcore.gamenightbymike.com") < html.index("arbor.gamenightbymike.com")
+    assert html.index("arbor.gamenightbymike.com") < html.index("blue.gamenightbymike.com")

@@ -6,7 +6,7 @@ import json
 from dataclasses import replace
 
 from minecraftmgr.config.settings import Settings
-from minecraftmgr.constants import REALM_STATUSES
+from minecraftmgr.constants import REALM_MODES, REALM_STATUSES
 from minecraftmgr.models.server_entry import ServerEntry
 
 
@@ -17,6 +17,11 @@ class RegistryError(Exception):
 def _check_status(status: object) -> None:
     if status not in REALM_STATUSES:
         raise RegistryError(f"Invalid status '{status}' (use one of: {', '.join(REALM_STATUSES)})")
+
+
+def _check_mode(mode: object) -> None:
+    if mode not in REALM_MODES:
+        raise RegistryError(f"Invalid mode '{mode}' (use one of: {', '.join(REALM_MODES)})")
 
 
 def load_registry(settings: Settings) -> dict[str, ServerEntry]:
@@ -70,6 +75,7 @@ def add_server(settings: Settings, entry: ServerEntry) -> None:
     """Add a new realm to the registry."""
 
     _check_status(entry.status)
+    _check_mode(entry.mode)
     entries = load_registry(settings)
 
     if entry.server_id in entries:
@@ -101,6 +107,9 @@ def update_server(settings: Settings, server_id: str, **changes: object) -> Serv
 
     if "status" in changes:
         _check_status(changes["status"])
+
+    if "mode" in changes:
+        _check_mode(changes["mode"])
 
     updated = replace(entries[server_id], **changes)
     entries[server_id] = updated

@@ -40,6 +40,8 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
     --muted-bg: #eae4d3;
     --bad: #a33a2a;
     --bad-bg: #f6e1da;
+    --hc: #8f1d1d;
+    --hc-bg: #f6dcd8;
     --shadow: 0 1px 2px rgba(38,34,26,0.06), 0 6px 16px -8px rgba(38,34,26,0.18);
     color-scheme: light;
   }}
@@ -60,6 +62,8 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
       --muted-bg: #232830;
       --bad: #f08a76;
       --bad-bg: #3a2220;
+      --hc: #ff6b5e;
+      --hc-bg: #2f1716;
       --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 10px 24px -10px rgba(0,0,0,0.55);
       color-scheme: dark;
     }}
@@ -80,6 +84,8 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
     --muted-bg: #232830;
     --bad: #f08a76;
     --bad-bg: #3a2220;
+    --hc: #ff6b5e;
+    --hc-bg: #2f1716;
     --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 10px 24px -10px rgba(0,0,0,0.55);
     color-scheme: dark;
   }}
@@ -173,6 +179,76 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
   .card:hover {{ transform: translateY(-2px); }}
 
   .card.running {{ background: var(--good-bg); border-color: var(--good); }}
+
+  .card.hardcore {{
+    border: 2px solid var(--hc);
+    background: linear-gradient(180deg, var(--hc-bg), var(--surface) 70%);
+  }}
+  .card.hardcore.running {{ border-color: var(--hc); background: linear-gradient(180deg, var(--hc-bg), var(--good-bg) 70%); }}
+  .card.hardcore .realm-name {{ color: var(--hc); }}
+
+  .badges {{ display: flex; flex-wrap: wrap; gap: 0.4rem; }}
+
+  .mode-badge {{
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-weight: 700;
+    padding: 0.24rem 0.55rem;
+    border-radius: 999px;
+    color: #fff;
+    background: var(--hc);
+  }}
+  .mode-badge .one-life {{ font-weight: 500; text-transform: none; letter-spacing: 0; opacity: 0.9; }}
+
+  .run-head {{ margin: 0 0 0.4rem; color: var(--ink); }}
+  .run-head.over {{ color: var(--hc); font-weight: 600; }}
+  .players-body td.dead {{ color: var(--hc); }}
+  .past-runs {{ margin: 0.8rem 0 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.35rem; }}
+
+  .reset-btn {{
+    font-family: inherit;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #fff;
+    background: var(--hc);
+    border: 1px solid var(--hc);
+    border-radius: 5px;
+    padding: 0.3rem 0.55rem;
+    cursor: pointer;
+  }}
+  .reset-btn:disabled {{ opacity: 0.6; cursor: default; }}
+
+  .reset-form {{
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border: 1px solid var(--hc);
+    border-radius: 7px;
+    background: var(--surface-raised);
+    font-size: 0.85rem;
+  }}
+  .reset-form[hidden] {{ display: none; }}
+  .reset-form p {{ margin: 0; color: var(--ink-dim); }}
+  .reset-form label {{ display: flex; flex-direction: column; gap: 0.2rem; font-weight: 600; }}
+  .reset-form input {{
+    font: inherit;
+    font-weight: 400;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: var(--surface);
+    color: var(--ink);
+  }}
+  .reset-form .reset-actions {{ display: flex; gap: 0.5rem; justify-content: flex-end; }}
+  .reset-form .reset-msg {{ color: var(--hc); font-weight: 600; }}
+  .reset-form .reset-msg:empty {{ display: none; }}
 
   .card-top {{
     display: flex;
@@ -695,14 +771,201 @@ _PAGE_TEMPLATE = """<title>Game Night by Mike</title>
     }});
   }});
 
+  // Hardcore realms: this run and past runs, behind the family PIN like "Who's played here".
+  var hardcoreData = null;
+
+  function formatPlayed(seconds) {{
+    if (seconds === null || seconds === undefined) {{ return "\\u2014"; }}
+    var h = Math.floor(seconds / 3600), m = Math.floor((seconds % 3600) / 60);
+    return h ? h + "h " + m + "m" : m + "m";
+  }}
+
+  function formatWhen(iso) {{
+    return iso ? iso.slice(0, 16).replace("T", " ") : "?";
+  }}
+
+  function deathOrder(run) {{
+    return run.players.filter(function (p) {{ return p.death_order; }})
+      .map(function (p) {{ return p.player; }}).join(" \\u2192 ");
+  }}
+
+  function runTable(run) {{
+    var table = document.createElement("table");
+    var head = table.createTHead().insertRow();
+    ["#", "Player", "Played", "Died"].forEach(function (label, i) {{
+      var th = document.createElement("th");
+      th.textContent = label;
+      if (i === 0 || i === 2) {{ th.className = "num"; }}
+      head.appendChild(th);
+    }});
+    var tbody = table.createTBody();
+    run.players.forEach(function (p) {{
+      var tr = tbody.insertRow();
+      var order = tr.insertCell();
+      order.className = "num";
+      order.textContent = p.death_order ? String(p.death_order) : "";
+      var name = tr.insertCell();
+      name.className = "player";
+      name.textContent = p.player + (run.last_alive === p.player ? " \\u2014 last alive" : "");
+      var played = tr.insertCell();
+      played.className = "num";
+      played.textContent = formatPlayed(p.play_seconds);
+      var died = tr.insertCell();
+      if (p.dead) {{
+        died.className = "dead";
+        died.textContent = p.died_at ? formatWhen(p.died_at) : "dead";
+        if (p.death_message) {{ died.title = p.death_message; }}
+      }} else {{
+        died.className = "not-yet";
+        died.textContent = "alive";
+      }}
+    }});
+    return table;
+  }}
+
+  function renderHardcore(details) {{
+    var body = details.querySelector(".players-body");
+    var data = (hardcoreData || {{}})[details.getAttribute("data-realm")];
+    body.textContent = "";
+    if (!data) {{ body.textContent = "No run data yet."; return; }}
+    var run = data.current;
+    var headline = document.createElement("p");
+    headline.className = "run-head";
+    if (!run.players.length) {{
+      headline.textContent = "Fresh world \\u2014 no one has joined this run yet.";
+    }} else if (run.everyone_dead) {{
+      headline.className = "run-head over";
+      headline.textContent = "Run over. Last alive: " + (run.last_alive || "?") +
+        ". Ready for Archive & Reset.";
+    }} else {{
+      var dead = run.players.filter(function (p) {{ return p.dead; }}).length;
+      headline.textContent = "Run started " + formatWhen(run.started_at) + " \\u00b7 " +
+        dead + " of " + run.players.length + " dead.";
+    }}
+    body.appendChild(headline);
+    if (run.players.length) {{ body.appendChild(runTable(run)); }}
+    if (data.runs.length) {{
+      var label = document.createElement("p");
+      label.className = "run-head";
+      label.textContent = "Past runs";
+      body.appendChild(label);
+      var list = document.createElement("ol");
+      list.className = "past-runs";
+      data.runs.slice().reverse().forEach(function (past) {{
+        var li = document.createElement("li");
+        li.value = past.run;
+        li.textContent = formatWhen(past.started_at) + " to " + formatWhen(past.ended_at) +
+          " (seed " + past.seed + "): last alive " + (past.last_alive || "?") +
+          ". Deaths: " + deathOrder(past) + ".";
+        list.appendChild(li);
+      }});
+      body.appendChild(list);
+    }}
+  }}
+
+  function loadHardcore(details) {{
+    var body = details.querySelector(".players-body");
+    var pin = storedPin() || window.prompt("Family PIN to see the hardcore runs:");
+    if (!pin) {{ details.open = false; return; }}
+    body.textContent = "Loading\\u2026";
+    fetch(TRIGGER_URL + "/hardcore", {{
+      method: "POST",
+      headers: {{ "X-Autostart-Pin": pin }}
+    }}).then(function (res) {{
+      if (res.status === 403) {{
+        rememberPin(null);
+        details.open = false;
+        window.alert("Wrong PIN.");
+        return null;
+      }}
+      if (!res.ok) {{ throw new Error("bad hardcore"); }}
+      return res.json();
+    }}).then(function (data) {{
+      if (!data) {{ return; }}
+      rememberPin(pin);
+      hardcoreData = data;
+      document.querySelectorAll("details.hardcore-runs[open]").forEach(renderHardcore);
+    }}).catch(function () {{
+      body.textContent = "Couldn't reach the game server.";
+    }});
+  }}
+
+  document.querySelectorAll("details.hardcore-runs").forEach(function (details) {{
+    details.addEventListener("toggle", function () {{
+      if (!details.open) {{ return; }}
+      if (hardcoreData) {{ renderHardcore(details); }} else {{ loadHardcore(details); }}
+    }});
+  }});
+
+  // Archive & Reset: family PIN plus the next world's seed (blank = random). The trigger
+  // daemon refuses until every player in the run has died.
+  document.querySelectorAll(".reset-btn[data-realm]").forEach(function (btn) {{
+    var form = btn.closest(".card").querySelector(".reset-form");
+    var msg = form.querySelector(".reset-msg");
+    var pinInput = form.querySelector("input[name=pin]");
+    var seedInput = form.querySelector("input[name=seed]");
+    var submit = form.querySelector(".reset-submit");
+    btn.addEventListener("click", function () {{
+      form.hidden = !form.hidden;
+      if (form.hidden) {{ return; }}
+      msg.textContent = "";
+      pinInput.value = storedPin() || "";
+      (pinInput.value ? seedInput : pinInput).focus();
+    }});
+    form.querySelector(".reset-cancel").addEventListener("click", function () {{
+      form.hidden = true;
+    }});
+    form.addEventListener("submit", function (event) {{
+      event.preventDefault();
+      var realm = btn.getAttribute("data-realm");
+      var pin = pinInput.value.trim();
+      var seed = seedInput.value.trim();
+      if (!pin) {{ msg.textContent = "Enter the family PIN."; return; }}
+      if (!window.confirm("Archive this run and delete the " + realm + " world? The next start makes a new world " +
+          (seed ? "from seed " + seed : "with a random seed") + ".")) {{ return; }}
+      submit.disabled = true;
+      submit.textContent = "Archiving\\u2026";
+      msg.textContent = "";
+      fetch(TRIGGER_URL + "/reset/" + realm, {{
+        method: "POST",
+        headers: {{ "X-Autostart-Pin": pin, "Content-Type": "application/json" }},
+        body: JSON.stringify({{ seed: seed }})
+      }}).then(function (res) {{
+        if (res.status === 403) {{ rememberPin(null); msg.textContent = "Wrong PIN."; return null; }}
+        return res.json().then(function (data) {{
+          if (!res.ok) {{ msg.textContent = data.error || "Could not reset it \\u2014 try again in a bit."; return null; }}
+          return data;
+        }});
+      }}).then(function (data) {{
+        if (!data) {{ return; }}
+        rememberPin(pin);
+        form.hidden = true;
+        seedInput.value = "";
+        var run = data.run;
+        window.alert("Run " + run.run + " archived. Last alive: " + (run.last_alive || "?") +
+          ". Deaths: " + deathOrder(run) + ". Autostart makes the new world.");
+        hardcoreData = null;
+        document.querySelectorAll("details.hardcore-runs[open]").forEach(loadHardcore);
+        refreshStatus();
+      }}).catch(function () {{
+        msg.textContent = "Could not reach the server.";
+      }}).finally(function () {{
+        submit.disabled = false;
+        submit.textContent = "Archive & Reset";
+      }});
+    }});
+  }});
+
   refreshStatus();
   setInterval(refreshStatus, 60000);
 </script>
 """
 
-_CARD_TEMPLATE = """      <article class="card">
+_CARD_TEMPLATE = """      <article class="card{card_class}">
         <div class="card-top">
-          <span class="status {status_class}" data-realm="{server_id}" data-registry="{status_class}"><span class="dot"></span><span class="status-label">{status_label}</span></span>
+          <div class="badges">
+            <span class="status {status_class}" data-realm="{server_id}" data-registry="{status_class}"><span class="dot"></span><span class="status-label">{status_label}</span></span>{mode_badge}
+          </div>
           <div>
             <p class="realm-name">{name}</p>
             <span class="version-badge">Minecraft {version} &middot; {server_type}</span>
@@ -723,11 +986,35 @@ _CARD_TEMPLATE = """      <article class="card">
         <details class="howto players" data-realm="{server_id}">
           <summary>Who's played here <span class="lock" aria-label="family PIN">&#128274;</span></summary>
           <div class="players-body"></div>
-        </details>
+        </details>{hardcore_runs}
         <div class="live-row" data-realm="{server_id}" hidden>
-          <button class="autostart-btn" data-realm="{server_id}" hidden>Autostart</button>
-        </div>
+          <button class="autostart-btn" data-realm="{server_id}" hidden>Autostart</button>{reset_button}
+        </div>{reset_form}
       </article>"""
+
+_HARDCORE_BADGE = """
+            <span class="mode-badge">&#10084; Hardcore <span class="one-life">&middot; one life</span></span>"""
+
+_HARDCORE_RUNS = """
+        <details class="howto hardcore-runs" data-realm="{server_id}">
+          <summary>This run &amp; past runs <span class="lock" aria-label="family PIN">&#128274;</span></summary>
+          <div class="players-body"></div>
+        </details>"""
+
+_RESET_BUTTON = """
+          <button class="reset-btn" data-realm="{server_id}">Archive &amp; Reset</button>"""
+
+_RESET_FORM = """
+        <form class="reset-form" hidden>
+          <p>Archives this run (who played, play time, order of deaths) and deletes the world. Only works once every player has died.</p>
+          <label>Family PIN <input type="password" name="pin" autocomplete="off" inputmode="numeric"></label>
+          <label>Seed for the next world <input type="text" name="seed" maxlength="64" placeholder="Leave blank for a random seed"></label>
+          <span class="reset-msg" role="alert"></span>
+          <div class="reset-actions">
+            <button type="button" class="autostart-btn reset-cancel">Cancel</button>
+            <button type="submit" class="reset-btn reset-submit">Archive &amp; Reset</button>
+          </div>
+        </form>"""
 
 
 def realm_address(server_id: str) -> str:
@@ -738,8 +1025,17 @@ def realm_address(server_id: str) -> str:
 
 def _render_card(server: ServerEntry) -> str:
     status_class, status_label = _STATUS_LABELS.get(server.status, ("inactive", server.status.title()))
+    hardcore = server.mode == "hardcore"
+
+    def hardcore_part(template: str) -> str:
+        return template.format(server_id=server.server_id) if hardcore else ""
 
     return _CARD_TEMPLATE.format(
+        card_class=" hardcore" if hardcore else "",
+        mode_badge=_HARDCORE_BADGE if hardcore else "",
+        hardcore_runs=hardcore_part(_HARDCORE_RUNS),
+        reset_button=hardcore_part(_RESET_BUTTON),
+        reset_form=hardcore_part(_RESET_FORM),
         server_id=server.server_id,
         name=server.name,
         version=server.minecraft_version,
@@ -751,9 +1047,10 @@ def _render_card(server: ServerEntry) -> str:
 
 
 def render_site(servers: list[ServerEntry]) -> str:
-    """Render the realm-picker page HTML for the given registry entries."""
+    """Render the realm-picker page HTML for the given registry entries (hardcore realms first)."""
 
-    cards = "\n".join(_render_card(server) for server in servers)
+    ordered = sorted(servers, key=lambda server: server.mode != "hardcore")
+    cards = "\n".join(_render_card(server) for server in ordered)
 
     return _PAGE_TEMPLATE.format(
         domain=REALM_DOMAIN,

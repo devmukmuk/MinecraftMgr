@@ -125,3 +125,24 @@ def test_scaffold_allows_non_empty_dir_with_force(tmp_path: Path, fake_jar: Path
     scaffold_realm_dir(realm_dir, jar_path=fake_jar, data_dir="gatorland", port=26020, force=True)
 
     assert (realm_dir / "server_gatorland.jar").exists()
+
+
+def test_scaffold_hardcore_mode_turns_on_hardcore(tmp_path: Path, fake_jar: Path) -> None:
+    """A hardcore realm's server.properties adds hardcore=true and difficulty=hard to the standard."""
+
+    realm_dir = tmp_path / "hardcore"
+
+    scaffold_realm_dir(realm_dir, jar_path=fake_jar, data_dir="hardcore", port=26666, mode="hardcore")
+
+    properties = (realm_dir / "server.properties").read_text(encoding="utf-8")
+    assert "hardcore=true\n" in properties
+    assert "difficulty=hard\n" in properties
+    assert "white-list=true\n" in properties
+
+
+def test_scaffold_survival_mode_leaves_hardcore_off(tmp_path: Path, fake_jar: Path) -> None:
+    realm_dir = tmp_path / "gatorland"
+
+    scaffold_realm_dir(realm_dir, jar_path=fake_jar, data_dir="gatorland", port=26020)
+
+    assert "hardcore" not in (realm_dir / "server.properties").read_text(encoding="utf-8")

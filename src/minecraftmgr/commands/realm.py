@@ -23,6 +23,7 @@ from rich.table import Table
 
 from minecraftmgr.config import load_settings
 from minecraftmgr.config.settings import Settings
+from minecraftmgr.constants import REALM_MODES
 from minecraftmgr.models.server_entry import ServerEntry
 from minecraftmgr.services.backup_service import resolve_server_data_dir
 from minecraftmgr.services.capacity_service import CapacityError, start_realm_within_capacity
@@ -101,6 +102,7 @@ def provision_cmd(
     mem_min: str = typer.Option("2G", "--mem-min"),
     mem_max: str = typer.Option("4G", "--mem-max"),
     data_dir: Optional[str] = typer.Option(None, "--data-dir", help="Defaults to server_id"),
+    mode: str = typer.Option("survival", "--mode", help="survival or hardcore (hardcore=true, difficulty=hard)"),
     force: bool = typer.Option(False, "--force", help="Overwrite a non-empty target directory"),
     yes: bool = typer.Option(False, "--yes", help="Skip confirmation"),
     dry_run: bool = typer.Option(False, "--dry-run", help="Print the plan, don't touch disk"),
@@ -122,10 +124,15 @@ def provision_cmd(
         data_dir=resolved_data_dir,
         created=datetime.now(timezone.utc).isoformat(),
         notes="",
+        mode=mode,
     )
 
+    if mode not in REALM_MODES:
+        console.print(f"[red]Invalid mode '{mode}' (use one of: {', '.join(REALM_MODES)})[/red]")
+        raise typer.Exit(code=1)
+
     if dry_run:
-        console.print(f"[bold]Would provision[/bold] {realm_dir}")
+        console.print(f"[bold]Would provision[/bold] {realm_dir} ({mode})")
         console.print(f"  jar for {minecraft_version} from _jarcache")
         console.print(f"  mem: {mem_min}/{mem_max}, port: {port}")
         console.print("  first-boot cycle to generate config/paper-global.yml")
@@ -150,6 +157,7 @@ def provision_cmd(
             mem_min=mem_min,
             mem_max=mem_max,
             force=force,
+            mode=mode,
         )
     except ScaffoldError as exc:
         console.print(f"[red]{exc}[/red]")

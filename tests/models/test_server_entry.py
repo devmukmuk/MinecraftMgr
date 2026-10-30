@@ -35,3 +35,12 @@ def test_from_dict_applies_defaults() -> None:
     assert entry.server_type == "paper"
     assert entry.data_dir == "river"
     assert entry.notes == ""
+
+
+def test_mode_defaults_to_survival_and_roundtrips() -> None:
+    assert ServerEntry.from_dict("river", {"name": "River", "port": 25567}).mode == "survival"
+
+    entry = ServerEntry.from_dict("hardcore", {"name": "Hardcore", "port": 26666, "mode": "hardcore"})
+
+    assert entry.to_dict()["mode"] == "hardcore"
+    assert ServerEntry.from_dict("hardcore", entry.to_dict()) == entry

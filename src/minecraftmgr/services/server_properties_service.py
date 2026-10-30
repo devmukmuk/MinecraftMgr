@@ -135,8 +135,13 @@ def validate_server_properties(
 def fix_server_properties(realm_dir: Path, issues: list[PropertyIssue]) -> None:
     """Set the issues' keys to their standard values in place; append any that are missing."""
 
+    set_properties(realm_dir, {issue.key: issue.expected for issue in issues})
+
+
+def set_properties(realm_dir: Path, wanted: dict[str, str]) -> None:
+    """Set keys in server.properties in place, keeping every other line; append any that are missing."""
+
     path = realm_dir / "server.properties"
-    wanted = {issue.key: issue.expected for issue in issues}
     raw = path.read_bytes().decode("utf-8", errors="replace")
     newline = "\r\n" if "\r\n" in raw else "\n"
 

@@ -26,6 +26,9 @@ EMPTY_ARRAY_CONTROL_FILES = (
 
 _TEMPLATES_DIR = get_runtime_dir() / "tools" / "templates"
 
+# Appended to server.properties for a hardcore realm: one life, and hardcore always plays on hard.
+HARDCORE_PROPERTIES = "hardcore=true\ndifficulty=hard\n"
+
 _EULA_CONTENT = (
     "# By changing the setting below to TRUE you are indicating your agreement to the EULA.\n"
     "# https://aka.ms/MinecraftEULA\n"
@@ -74,6 +77,7 @@ def scaffold_realm_dir(
     mem_max: str = "4G",
     java_bin: str = "java",
     force: bool = False,
+    mode: str = "survival",
 ) -> None:
     """Scaffold a brand-new realm's data directory. Refuses a non-empty target unless force=True."""
 
@@ -96,9 +100,10 @@ def scaffold_realm_dir(
         (_TEMPLATES_DIR / "log4j2.xml").read_text(encoding="utf-8"), encoding="utf-8"
     )
 
-    (realm_dir / "server.properties").write_text(
-        _render_server_properties(port=port), encoding="utf-8"
-    )
+    properties = _render_server_properties(port=port)
+    if mode == "hardcore":
+        properties += HARDCORE_PROPERTIES
+    (realm_dir / "server.properties").write_text(properties, encoding="utf-8")
 
     start_sh_path = realm_dir / "start.sh"
     start_sh_path.write_text(

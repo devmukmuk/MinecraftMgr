@@ -33,6 +33,7 @@ def add(
     jar_source: str = typer.Option("", "--jar-source", help="Where the server jar comes from"),
     data_dir: Optional[str] = typer.Option(None, "--data-dir", help="Data directory name (defaults to server_id)"),
     notes: str = typer.Option("", "--notes", help="Free-text notes"),
+    mode: str = typer.Option("survival", "--mode", help="survival or hardcore"),
 ) -> None:
     """Register a new realm."""
 
@@ -49,6 +50,7 @@ def add(
         data_dir=data_dir or server_id,
         created=datetime.now(timezone.utc).isoformat(),
         notes=notes,
+        mode=mode,
     )
 
     try:
@@ -121,6 +123,7 @@ def update(
     server_type: Optional[str] = typer.Option(None, "--type"),
     jar_source: Optional[str] = typer.Option(None, "--jar-source"),
     notes: Optional[str] = typer.Option(None, "--notes"),
+    mode: Optional[str] = typer.Option(None, "--mode", help="survival or hardcore"),
 ) -> None:
     """Update fields on an existing realm."""
 
@@ -134,6 +137,7 @@ def update(
             "server_type": server_type,
             "jar_source": jar_source,
             "notes": notes,
+            "mode": mode,
         }.items()
         if value is not None
     }

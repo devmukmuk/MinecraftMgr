@@ -1,4 +1,4 @@
-"""Tests for the trigger HTTP daemon (status + start endpoints)."""
+"""Tests for the trigger HTTP daemon (status, start, players and hardcore endpoints)."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from minecraftmgr.config.settings import Settings
 from minecraftmgr.models.server_entry import ServerEntry
 from minecraftmgr.services import trigger_daemon
 from minecraftmgr.services.capacity_service import CapacityError
+from minecraftmgr.services.hardcore_service import HardcoreError
 from minecraftmgr.services.registry_service import add_server
 from minecraftmgr.services.trigger_service import TriggerError
 
@@ -288,3 +289,93 @@ def test_players_returns_activity_per_realm_and_caches(
 
     assert body["gravestone"][0]["days"] == 209
     assert calls == [["gravestone", "jitterbug"]]  # archived "cave" left out, second call cached
+
+
+def _post(base_url: str, path: str, pin: str, body: dict | None = None) -> urllib.request.Request:
+    headers = {"X-Autostart-Pin": pin}
+    data = None
+    if body is not None:
+        headers["Content-Type"] = "application/json"
+        data = json.dumps(body).encode("utf-8")
+    return urllib.request.Request(f"{base_url}{path}", data=data, method="POST", headers=headers)
+
+
+@pytest.mark.parametrize("path", ["/hardcore", "/reset/gravestone"])
+def test_hardcore_endpoints_require_the_family_pin(
+    running_daemon: tuple[str, list[str]], monkeypatch: pytest.MonkeyPatch, path: str
+) -> None:
+    """Hardcore summaries and Archive & Reset are 403 without the PIN, and reset nothing."""
+
+    base_url, _ = running_daemon
+    resets: list[str] = []
+    monkeypatch.setattr(
+        trigger_daemon, "archive_and_reset", lambda _s, server, seed: resets.append(server.server_id)
+    )
+
+    with pytest.raises(urllib.error.HTTPError) as exc_info:
+        urllib.request.urlopen(_post(base_url, path, "0000"))
+
+    assert exc_info.value.code == 403
+    assert resets == []
+
+
+def test_hardcore_returns_the_report(
+    running_daemon: tuple[str, list[str]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base_url, _ = running_daemon
+    monkeypatch.setattr(
+        trigger_daemon,
+        "hardcore_report",
+        lambda _s, servers: {"hardcore": {"current": {"players": []}, "runs": []}},
+    )
+
+    with urllib.request.urlopen(_post(base_url, "/hardcore", "1234")) as res:
+        assert json.loads(res.read()) == {"hardcore": {"current": {"players": []}, "runs": []}}
+
+
+def test_reset_passes_the_seed_and_returns_the_run(
+    running_daemon: tuple[str, list[str]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from minecraftmgr.models.hardcore_run import HardcoreRun
+
+    base_url, _ = running_daemon
+    calls: list[tuple[str, str]] = []
+
+    def fake_reset(_settings, server, seed):
+        calls.append((server.server_id, seed))
+        return HardcoreRun(run=1, last_alive="Cal")
+
+    monkeypatch.setattr(trigger_daemon, "archive_and_reset", fake_reset)
+
+    with urllib.request.urlopen(_post(base_url, "/reset/jitterbug", "1234", {"seed": "abc"})) as res:
+        body = json.loads(res.read())
+
+    assert calls == [("jitterbug", "abc")]
+    assert body["status"] == "reset"
+    assert body["run"]["last_alive"] == "Cal"
+
+
+def test_reset_refusal_is_409_with_the_reason(
+    running_daemon: tuple[str, list[str]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base_url, _ = running_daemon
+
+    def refuse(*_args):
+        raise HardcoreError("Still alive: Cal")
+
+    monkeypatch.setattr(trigger_daemon, "archive_and_reset", refuse)
+
+    with pytest.raises(urllib.error.HTTPError) as exc_info:
+        urllib.request.urlopen(_post(base_url, "/reset/jitterbug", "1234", {}))
+
+    assert exc_info.value.code == 409
+    assert json.loads(exc_info.value.read()) == {"error": "Still alive: Cal"}
+
+
+def test_reset_unknown_realm_returns_404(running_daemon: tuple[str, list[str]]) -> None:
+    base_url, _ = running_daemon
+
+    with pytest.raises(urllib.error.HTTPError) as exc_info:
+        urllib.request.urlopen(_post(base_url, "/reset/nope", "1234", {}))
+
+    assert exc_info.value.code == 404

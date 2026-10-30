@@ -67,3 +67,11 @@ def test_render_handoff_includes_all_three_sections() -> None:
     assert "minecraftmgr server add gatorland" in handoff
     assert "[servers]" in handoff
     assert "Cloudflare" in handoff
+
+
+def test_render_server_add_command_includes_hardcore_mode() -> None:
+    from dataclasses import replace
+
+    command = render_server_add_command(replace(_entry(), mode="hardcore"))
+
+    assert command.endswith("--data-dir gatorland_26_2 --mode hardcore")

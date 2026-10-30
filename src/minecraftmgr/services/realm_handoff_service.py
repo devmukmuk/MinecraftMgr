@@ -23,6 +23,7 @@ def render_server_add_command(server: ServerEntry) -> str:
         f'--name "{server.name}" --port {server.port} '
         f"--mc-version {server.minecraft_version} --type {server.server_type} "
         f"--data-dir {server.data_dir}"
+        + (f" --mode {server.mode}" if server.mode != "survival" else "")
     )
 
 

@@ -125,3 +125,14 @@ def test_invalid_status_is_rejected(settings: Settings) -> None:
         update_server(settings, "gatorland", status="Archived")
 
     assert update_server(settings, "gatorland", status="archived").status == "archived"
+
+
+def test_invalid_mode_rejected(settings: Settings) -> None:
+    with pytest.raises(RegistryError, match="Invalid mode"):
+        add_server(settings, _entry("hardcore", mode="peaceful"))
+
+    add_server(settings, _entry("hardcore", mode="hardcore"))
+    with pytest.raises(RegistryError, match="Invalid mode"):
+        update_server(settings, "hardcore", mode="creative")
+
+    assert load_registry(settings)["hardcore"].mode == "hardcore"
