@@ -11,7 +11,7 @@ it's a live restart of the shared proxy.
 
 from __future__ import annotations
 
-from minecraftmgr.constants import REALM_DOMAIN
+from minecraftmgr.constants import OSCAR_LAN_IP, REALM_DOMAIN
 from minecraftmgr.models.server_entry import ServerEntry
 
 
@@ -53,8 +53,14 @@ def render_cloudflare_instructions(server: ServerEntry) -> str:
     )
 
 
+def render_hosts_line(server: ServerEntry) -> str:
+    """Render the hosts-file line that lets PCs inside the house reach this realm."""
+
+    return f"{OSCAR_LAN_IP} {server.server_id}.{REALM_DOMAIN}"
+
+
 def render_handoff(server: ServerEntry, backend_port: int) -> str:
-    """Render the full three-part handoff block: servers.json, velocity.toml, Cloudflare."""
+    """Render the full handoff block: servers.json, velocity.toml, Cloudflare, home PCs' hosts file."""
 
     return (
         "=== Run this from the DEV BOX, not oscar ===\n"
@@ -68,4 +74,11 @@ def render_handoff(server: ServerEntry, backend_port: int) -> str:
         "\n"
         "=== Add in Cloudflare ===\n"
         f"{render_cloudflare_instructions(server)}"
+        "\n"
+        "=== On each Windows PC at home: hosts file (Notepad as Administrator) ===\n"
+        "(the AT&T gateway can't reliably loop home PCs out to the public IP and back;\n"
+        " without this line, joining works once, then 'Connection timed out: getsockopt')\n"
+        "C:\\Windows\\System32\\drivers\\etc\\hosts:\n"
+        f"  {render_hosts_line(server)}\n"
+        "then, in an admin PowerShell: ipconfig /flushdns\n"
     )

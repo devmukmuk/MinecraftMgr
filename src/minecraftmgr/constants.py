@@ -4,6 +4,10 @@ REALM_DOMAIN = "gamenightbymike.com"
 SITE_URL = f"https://minecraft.{REALM_DOMAIN}"
 TRIGGER_URL = f"https://trigger.{REALM_DOMAIN}"
 SCREENSHOTS_URL = f"https://shots.{REALM_DOMAIN}/report/"
+# oscar's reserved LAN IP. The AT&T gateway can't reliably hairpin LAN clients through the
+# public IP, so PCs at home map each realm's hostname here (modify-local-hosts-override.md).
+OSCAR_LAN_IP = "192.168.1.113"
+
 # Velocity proxy: the one public Minecraft port on oscar, routing to every realm.
 VELOCITY_PORT = 25565
 

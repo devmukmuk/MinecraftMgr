@@ -59,7 +59,7 @@ def test_render_cloudflare_instructions_names_the_realm() -> None:
     assert "CNAME" in instructions
 
 
-def test_render_handoff_includes_all_three_sections() -> None:
+def test_render_handoff_includes_the_dev_box_proxy_and_dns_sections() -> None:
     """The full handoff block includes the server add command, velocity snippet, and Cloudflare steps."""
 
     handoff = render_handoff(_entry(), backend_port=26020)
@@ -75,3 +75,13 @@ def test_render_server_add_command_includes_hardcore_mode() -> None:
     command = render_server_add_command(replace(_entry(), mode="hardcore"))
 
     assert command.endswith("--data-dir gatorland_26_2 --mode hardcore")
+
+
+def test_render_handoff_includes_the_home_hosts_line() -> None:
+    """Home PCs need a hosts entry: the AT&T gateway can't reliably hairpin to the public IP."""
+
+    handoff = render_handoff(_entry(), backend_port=26020)
+
+    assert "192.168.1.113 gatorland.gamenightbymike.com" in handoff
+    assert "Connection timed out: getsockopt" in handoff
+    assert "ipconfig /flushdns" in handoff
