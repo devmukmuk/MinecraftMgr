@@ -1,0 +1,18 @@
+# Cloudflare Tunnel that carries SSH to oscar from off the LAN.
+# See docs/workflows/remote-ssh-travel.md. Runs as mike, who owns the
+# tunnel credentials in /home/mike/.cloudflared/ (same as mc-trigger's).
+[Unit]
+Description=Cloudflare Tunnel - SSH to oscar (ssh.gamenightbymike.com)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=mike
+TimeoutStartSec=15
+Type=notify
+ExecStart=/usr/bin/cloudflared --no-autoupdate --config /home/mike/.cloudflared/oscar-ssh-config.yml tunnel run
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

@@ -66,6 +66,7 @@ checkout can't push.
 | [Delete a realm completely](delete-realm.md) | None | Irreversible — read this one fully before running anything |
 | [Convert vanilla/Fabric/Forge → Paper](convert-engine.md) | Deliberately manual/guided | One direction only — see that doc for why Paper → vanilla isn't a thing here |
 | [Redeploy oscar's Minecraft scripts from git](redeploy-oscar-scripts.md) | None | One-time cutover, `sudo`/`minecraft`-user gated |
+| [SSH to oscar while traveling](remote-ssh-travel.md) | None | One-time setup: Cloudflare Tunnel + Access, no router port opened |
 
 ## For family members, not admins
 
