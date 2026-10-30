@@ -179,9 +179,17 @@ pointing at their own `WorkingDirectory` and jar.
 
 ## ============= Step 7. Install and configure Velocity
 
+> **Superseded details.** This step is the original plan. Oscar actually
+> runs Velocity from `/opt/mc/_proxy` as `velocity-proxy.service` (see
+> [reboot-recovery.md](../workflows/reboot-recovery.md)). The jar comes from
+> the Fill v3 API, and the old `api.papermc.io/v2` URL no longer applies.
+> Current version and how to upgrade:
+> [upgrade-velocity.md](../workflows/upgrade-velocity.md).
+
 ```bash
-cd /opt/mc/proxy
-curl -o velocity.jar -L https://api.papermc.io/v2/projects/velocity/versions/3.4.0/builds/latest/downloads/velocity-3.4.0.jar
+cd /opt/mc/_proxy
+# download URL + sha256: see upgrade-velocity.md step 2 (Fill v3 API)
+curl -o velocity.jar -L "<download url>"
 java -jar velocity.jar   # first run generates velocity.toml + forwarding.secret, then Ctrl+C
 ```
 

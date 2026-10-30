@@ -343,7 +343,8 @@ anything touching the live process (see
 
 ### Velocity config
 
-Installed at `/opt/mc/_proxy` (Velocity 4.0.0, downloaded the same way
+Installed at `/opt/mc/_proxy` (Velocity 4.0.0 at the time; 4.3.1 since 2026-10-30, see
+[upgrade-velocity.md](../workflows/upgrade-velocity.md); downloaded the same way
 as the Paper jars, via the Fill API — the old install instructions in
 [oscar-realm-hosting.md](oscar-realm-hosting.md) also predate the API
 migration). `velocity.toml`:

@@ -59,7 +59,11 @@ Registered in `servers.json` as `hardcore`, port `26666`, Minecraft 26.3
    already registered. Do the Velocity and Cloudflare steps it prints:
    [modify-cloudflare-cname.md](modify-cloudflare-cname.md) for
    `hardcore` → `mc.gamenightbymike.com`.
-5. **Whitelist the players**, as described in
+5. **Check that Velocity supports the realm's version.** If players get
+   `Incompatible client! Please use 1.7.2-<version>`, the proxy is older than
+   the realm. That happened with 26.3 on Velocity 4.0.0. See
+   [upgrade-velocity.md](upgrade-velocity.md).
+6. **Whitelist the players**, as described in
    [modify-whitelist.md](modify-whitelist.md).
 
 To turn an existing realm into a hardcore one, run `server update <id> --mode
