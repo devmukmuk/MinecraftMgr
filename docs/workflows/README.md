@@ -61,6 +61,7 @@ checkout can't push.
 | [Add/change a Cloudflare CNAME](modify-cloudflare-cname.md) | None | No API token on oscar |
 | [Test with a local hosts override](modify-local-hosts-override.md) | None (by nature — dev-box-local) | |
 | [Modify the whitelist](modify-whitelist.md) | None | Live console injection possible without a restart |
+| [Upgrade the Velocity proxy](upgrade-velocity.md) | None | Needed when a realm moves to a Minecraft version the proxy doesn't support yet ("Incompatible client!") |
 | [Bedrock crossplay (Geyser + Floodgate)](bedrock-crossplay.md) | None | One-time proxy setup, plus per-realm key/ViaVersion and per-player whitelist steps |
 | [Modify server ops](modify-ops.md) | None | Live console injection possible without a restart |
 | [Hardcore realm: set up, Archive & Reset](hardcore-realm.md) | Full: Archive & Reset button on the page (family PIN) | Only after every player in the run has died |
