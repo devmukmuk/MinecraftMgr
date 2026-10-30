@@ -63,7 +63,7 @@
     "name": "Hardcore",
     "status": "active",
     "port": 26666,
-    "minecraft_version": "26.2",
+    "minecraft_version": "26.3",
     "server_type": "paper",
     "jar_source": "",
     "data_dir": "hardcore",

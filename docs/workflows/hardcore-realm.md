@@ -19,11 +19,19 @@ realms:
 
 ## Set up `hardcore` (one time)
 
-Registered in `servers.json` as `hardcore`, port `26666`, Minecraft 26.2,
-data_dir `hardcore`.
+Registered in `servers.json` as `hardcore`, port `26666`, Minecraft 26.3
+(Paper build 231), data_dir `hardcore`. Provisioned 2026-10-30.
 
-1. **Deploy this code to oscar** and restart `mc-trigger.service`, as
-   described in [deployment-workflow.md](../architecture/deployment-workflow.md).
+1. **Deploy this code to oscar** and restart `mc-trigger.service`. As
+   `mike` (the checkout at `/srv/mc` is `mike`-owned; the service itself runs
+   as `minecraft`):
+   ```bash
+   cd /srv/mc
+   git checkout main
+   git pull
+   sudo systemctl restart mc-trigger.service
+   sudo systemctl status mc-trigger.service --no-pager
+   ```
    The new `/hardcore` and `/reset/<id>` endpoints don't exist until the
    service restarts.
 2. **Check that port 26666 is free on oscar.** `servers.json` doesn't list
@@ -31,16 +39,27 @@ data_dir `hardcore`.
    ```bash
    ss -ltn | grep 26666
    ```
-3. **Provision** (on oscar, as `minecraft`):
+3. **Cache the Paper jar** if `_jarcache` doesn't have this version yet.
+   Provision fails fast with `server_26_3.jar not found` if it's missing. See
+   [PAPER.md](../PAPER.md) for finding the build's URL and sha256. As `mike`:
    ```bash
-   python -m minecraftmgr realm provision hardcore --name "Hardcore" --port 26666 \
-     --mc-version 26.2 --mode hardcore
+   cd /tmp
+   curl -L -o server_26_3.jar "<download url>"
+   echo "<sha256>  server_26_3.jar" | sha256sum -c - \
+     && sudo install -o minecraft -g minecraft -m 644 server_26_3.jar /opt/mc/_jarcache/server_26_3.jar
+   ```
+4. **Provision.** Run it from `mike`'s shell, as `minecraft`, because it
+   does a first boot:
+   ```bash
+   cd /srv/mc
+   sudo -u minecraft /srv/mc/.venv/bin/python -m minecraftmgr realm provision hardcore \
+     --name "Hardcore" --port 26666 --mc-version 26.3 --mode hardcore
    ```
    Skip the `server add` line in the handoff output, because the realm is
    already registered. Do the Velocity and Cloudflare steps it prints:
    [modify-cloudflare-cname.md](modify-cloudflare-cname.md) for
    `hardcore` → `mc.gamenightbymike.com`.
-4. **Whitelist the players**, as described in
+5. **Whitelist the players**, as described in
    [modify-whitelist.md](modify-whitelist.md).
 
 To turn an existing realm into a hardcore one, run `server update <id> --mode
