@@ -69,6 +69,7 @@ checkout can't push.
 | [Convert vanilla/Fabric/Forge → Paper](convert-engine.md) | Deliberately manual/guided | One direction only — see that doc for why Paper → vanilla isn't a thing here |
 | [Redeploy oscar's Minecraft scripts from git](redeploy-oscar-scripts.md) | None | One-time cutover, `sudo`/`minecraft`-user gated |
 | [SSH to oscar while traveling](remote-ssh-travel.md) | None | Live since 2026-10-30: `ssh oscar-remote` from Foxtrot via Cloudflare Tunnel + Access, no router port opened |
+| [Family drive (P:) for the Utah PCs](family-drive.md) | Partly scripted | Planned 2026-11-01: Samba `[Family]` share reached through Cloudflare One + a private tunnel route, email-code login |
 
 ## For family members, not admins
 

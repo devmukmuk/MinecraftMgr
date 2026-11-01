@@ -1,0 +1,19 @@
+# Cloudflare Tunnel that carries the Family share (SMB, 10.77.77.1:445) to
+# the Utah PCs' Cloudflare One client. See docs/workflows/family-drive.md.
+# Runs as mike, who owns the tunnel credentials in /home/mike/.cloudflared/.
+[Unit]
+Description=Cloudflare Tunnel - Family share private route (10.77.77.1)
+After=network-online.target oscar-family-ip.service
+Wants=network-online.target
+Requires=oscar-family-ip.service
+
+[Service]
+User=mike
+TimeoutStartSec=15
+Type=notify
+ExecStart=/usr/bin/cloudflared --no-autoupdate --config /home/mike/.cloudflared/oscar-family-config.yml tunnel run
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
