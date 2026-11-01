@@ -1,0 +1,17 @@
+# Puts 10.77.77.1 on lo: the address the Utah PCs use for the Family share,
+# routed to oscar through the oscar-family tunnel. It's outside every home
+# LAN range, so it can't clash with the Utah router's 192.168.x.x network.
+# See docs/workflows/family-drive.md.
+[Unit]
+Description=Family share address 10.77.77.1 on lo
+After=network.target
+Before=smbd.service cloudflared-oscar-family.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c 'ip addr show dev lo | grep -q "10.77.77.1/32" || ip addr add 10.77.77.1/32 dev lo'
+ExecStop=/sbin/ip addr del 10.77.77.1/32 dev lo
+
+[Install]
+WantedBy=multi-user.target
